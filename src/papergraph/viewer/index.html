@@ -17,7 +17,18 @@
       <span class="sub">evidence-graph viewer</span>
     </div>
     <span class="paper" id="pg-paper"></span>
-    <button class="theme-btn" id="pg-theme" type="button" title="Toggle light / dark theme" aria-label="Toggle light / dark theme">
+    <a class="icon-btn" id="pg-github" href="https://github.com/ZakuZakuu/papergraph" target="_blank" rel="noopener noreferrer" title="View on GitHub" aria-label="View on GitHub">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+        <path d="M12 .5C5.73.5.75 5.48.75 11.75c0 5.02 3.26 9.28 7.78 10.78.57.1.78-.25.78-.55
+          0-.27-.01-1.16-.02-2.11-3.17.69-3.84-1.35-3.84-1.35-.52-1.32-1.26-1.67-1.26-1.67-1.03-.7.08-.69.08-.69
+          1.14.08 1.74 1.17 1.74 1.17 1.01 1.73 2.65 1.23 3.3.94.1-.73.4-1.23.72-1.51-2.53-.29-5.19-1.27-5.19-5.63
+          0-1.24.44-2.26 1.17-3.05-.12-.29-.51-1.45.11-3.02 0 0 .96-.31 3.14 1.16a10.9 10.9 0 0 1 5.72 0
+          c2.18-1.47 3.14-1.16 3.14-1.16.62 1.57.23 2.73.11 3.02.73.79 1.17 1.81 1.17 3.05 0 4.37-2.67 5.34-5.21 5.62
+          .41.36.77 1.07.77 2.15 0 1.55-.01 2.8-.01 3.18 0 .3.2.66.79.55 4.52-1.51 7.78-5.76 7.78-10.78
+          C23.25 5.48 18.27.5 12 .5Z"/>
+      </svg>
+    </a>
+    <button class="icon-btn theme-btn" id="pg-theme" type="button" title="Toggle light / dark theme" aria-label="Toggle light / dark theme">
       <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
         <path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.45 1 1.18 1 1.98V16h5v-.12c0-.8.4-1.53 1-1.98A6 6 0 0 0 12 3Z"/>
       </svg>
@@ -29,7 +40,13 @@
       <input class="search" id="pg-search" placeholder="search nodes…" autocomplete="off" spellcheck="false">
     </div>
     <div class="card">
-      <h2>Node kinds</h2>
+      <div class="card-head">
+        <h2>Categories</h2>
+        <div class="head-actions">
+          <button type="button" id="pg-legend-all">All</button>
+          <button type="button" id="pg-legend-none">None</button>
+        </div>
+      </div>
       <div class="legend" id="pg-legend"></div>
     </div>
     <div class="card">

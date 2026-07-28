@@ -30,10 +30,13 @@ _SOURCE = _GOLDEN_DIR / "paper.json"
 
 _VIEWER_SRC = Path(cli.__file__).resolve().parent / "viewer"
 
-# The only tolerated http(s) token anywhere in the viewer: the SVG namespace URI
-# passed to document.createElementNS. It is a namespace identifier, never a
-# network fetch.
+# The only tolerated http(s) tokens anywhere in the viewer: the SVG namespace
+# URI (a namespace identifier, never a network fetch) and the project's own
+# GitHub link (an <a href> the user must click -- never auto-fetched, unlike
+# a CDN script/font/img src, which is what this guard actually exists to catch).
 _SVG_NS = "http://www.w3.org/2000/svg"
+_REPO_LINK = "https://github.com/ZakuZakuu/papergraph"
+_ALLOWED_EXTERNAL = {_SVG_NS, _REPO_LINK}
 
 
 @pytest.fixture(scope="module")
@@ -88,22 +91,23 @@ def test_standalone_has_no_external_resource_refs(built: Path):
     lowered = html.lower()
     # no resource-loading references of any kind
     assert "src=\"http" not in lowered
-    assert "href=\"http" not in lowered
+    assert f'href="{_REPO_LINK}"' in html  # the one intentional, click-only <a href>
+    assert lowered.count('href="http') == 1  # and nothing else masquerading as one
     assert "@import" not in lowered
     assert "url(http" not in lowered
     assert "//cdn" not in lowered
     assert "fonts.googleapis" not in lowered
     assert "fonts.gstatic" not in lowered
-    # every http(s) occurrence must be the inert SVG namespace URI, never a fetch
+    # every remaining http(s) occurrence must be an allowed inert reference
     for m in re.findall(r"https?://[^\s\"'<>()\\]+", html):
-        assert m == _SVG_NS, f"unexpected external URL reference: {m}"
+        assert m in _ALLOWED_EXTERNAL, f"unexpected external URL reference: {m}"
 
 
 def test_served_assets_have_no_external_refs(built: Path):
     for name in (cli.VIEWER_INDEX_FILE, cli.VIEWER_STYLES_FILE, cli.VIEWER_APP_FILE):
         text = (built / name).read_text(encoding="utf-8")
         for m in re.findall(r"https?://[^\s\"'<>()\\]+", text):
-            assert m == _SVG_NS, f"{name}: unexpected external URL {m}"
+            assert m in _ALLOWED_EXTERNAL, f"{name}: unexpected external URL {m}"
 
 
 # --- app.js structural soundness ----------------------------------------------

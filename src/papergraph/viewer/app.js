@@ -632,7 +632,8 @@ function renderCrumb(){
 function buildLegend(){
   const el=document.getElementById("pg-legend"); const cnt={};
   nodes.forEach(n=>cnt[n.kind]=(cnt[n.kind]||0)+1);
-  el.innerHTML=KIND_ORDER.filter(k=>cnt[k]).map(k=>{
+  const present=KIND_ORDER.filter(k=>cnt[k]);
+  el.innerHTML=present.map(k=>{
     const m=KIND[k]; const gap=k==="gap";
     return `<div class="leg${gap?" gaprow":""}" data-kind="${k}">
       <span class="dot" style="${gap?"":`background:${m.c};color:${m.c}`}"></span>
@@ -643,6 +644,13 @@ function buildLegend(){
     if(kindOff.has(k))kindOff.delete(k); else kindOff.add(k);
     row.classList.toggle("off",kindOff.has(k)); computeHighlight();
   }));
+  function setAll(off){
+    present.forEach(k=>{ if(off) kindOff.add(k); else kindOff.delete(k); });
+    el.querySelectorAll(".leg").forEach(row=>row.classList.toggle("off",off));
+    computeHighlight();
+  }
+  document.getElementById("pg-legend-all").onclick=()=>setAll(false);
+  document.getElementById("pg-legend-none").onclick=()=>setAll(true);
 }
 function buildGroups(){
   const el=document.getElementById("pg-groups");

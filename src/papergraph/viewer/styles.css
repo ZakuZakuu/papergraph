@@ -29,11 +29,13 @@
 #pg-top .sub{font-family:var(--mono);font-size:11px;color:var(--ink-faint);letter-spacing:.02em}
 #pg-top .paper{margin-left:6px;font-size:12.5px;color:var(--ink-dim);pointer-events:auto;
   max-width:44vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-#pg-top .theme-btn{margin-left:auto;pointer-events:auto;display:grid;place-items:center;
+#pg-top .icon-btn{pointer-events:auto;display:grid;place-items:center;
   width:30px;height:30px;border-radius:9px;border:1px solid var(--stroke);
   background:var(--panel);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
-  color:var(--ink-dim);cursor:pointer;transition:color .15s,border-color .15s,background .15s}
-#pg-top .theme-btn:hover{color:var(--ink);border-color:var(--accent-dim)}
+  color:var(--ink-dim);cursor:pointer;text-decoration:none;
+  transition:color .15s,border-color .15s,background .15s}
+#pg-top .icon-btn:hover{color:var(--ink);border-color:var(--accent-dim)}
+#pg-top #pg-github{margin-left:auto}
 #pg-top .theme-btn.on{color:#f0c065;border-color:rgba(240,192,101,.55);background:rgba(240,192,101,.12)}
 
 /* ---------- left rail ---------- */
@@ -47,6 +49,13 @@
   box-shadow:0 12px 34px -18px rgba(0,0,0,.8)}
 .card h2{margin:0 0 10px;font-size:10.5px;font-weight:600;letter-spacing:.13em;
   text-transform:uppercase;color:var(--ink-faint)}
+.card-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:10px}
+.card-head h2{margin-bottom:0}
+.card-head .head-actions{display:flex;gap:10px}
+.card-head .head-actions button{background:none;border:none;padding:0;cursor:pointer;
+  font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--ink-faint);transition:color .12s}
+.card-head .head-actions button:hover{color:var(--accent)}
 .search{width:100%;background:var(--bg2);border:1px solid var(--stroke2);border-radius:9px;
   color:var(--ink);font-family:var(--mono);font-size:12.5px;padding:8px 11px;outline:none}
 .search:focus{border-color:var(--accent-dim);box-shadow:0 0 0 3px rgba(87,224,216,.09)}
@@ -222,7 +231,7 @@ table.meas tr:last-child td{border-bottom:none}
 :root[data-theme="light"] #pg-insp,
 :root[data-theme="light"] #pg-bot .crumb,
 :root[data-theme="light"] #pg-bot .zoom button,
-:root[data-theme="light"] #pg-top .theme-btn{box-shadow:0 10px 26px -16px rgba(30,40,60,.2)}
+:root[data-theme="light"] #pg-top .icon-btn{box-shadow:0 10px 26px -16px rgba(30,40,60,.2)}
 :root[data-theme="light"] #pg-tip{box-shadow:0 10px 24px -12px rgba(30,40,60,.25)}
 :root[data-theme="light"] .search:focus{box-shadow:0 0 0 3px rgba(14,148,140,.12)}
 :root[data-theme="light"] .leg:hover,
