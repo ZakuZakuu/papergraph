@@ -51,6 +51,10 @@ jobs:
         run: rm -f dist/papergraph.pyz
 
       - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          # A re-run of this job (e.g. after a transient failure) must not
+          # hard-fail just because the previous run's upload already landed.
+          skip-existing: true
 
   github-release:
     needs: build
