@@ -4,6 +4,33 @@
 /* ================= papergraph viewer v2 — force-directed, dependency-free ================= */
 (function(){
 "use strict";
+  // ---- theme (light/dark): applied immediately, independent of data load ----
+  var THEME_KEY = "papergraph-theme";
+  function systemPrefersLight(){
+    return !!(window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches);
+  }
+  function savedTheme(){ try{ return localStorage.getItem(THEME_KEY); }catch(e){ return null; } }
+  function currentTheme(){ return savedTheme() || (systemPrefersLight() ? "light" : "dark"); }
+  function applyTheme(t){
+    document.documentElement.setAttribute("data-theme", t);
+    var btn = document.getElementById("pg-theme");
+    if(btn){
+      btn.classList.toggle("on", t==="light");
+      var label = t==="light" ? "Switch to dark theme" : "Switch to light theme";
+      btn.setAttribute("aria-label", label); btn.title = label;
+    }
+  }
+  applyTheme(currentTheme());
+  document.addEventListener("DOMContentLoaded", function(){
+    var btn = document.getElementById("pg-theme");
+    if(!btn) return;
+    btn.addEventListener("click", function(){
+      var next = document.documentElement.getAttribute("data-theme")==="light" ? "dark" : "light";
+      try{ localStorage.setItem(THEME_KEY, next); }catch(e){}
+      applyTheme(next);
+    });
+  });
+
   // ---- data loading: inline (standalone) first, else fetch per manifest.json ----
   function loadData(){
     if (window.__PAPERGRAPH_DATA__) return Promise.resolve(window.__PAPERGRAPH_DATA__);
@@ -33,6 +60,24 @@ const KIND = {
   gap:           {c:"#ff5c6c", r:9,  label:"Gap"}
 };
 const KIND_ORDER = ["artifact","procedure","configuration","result","claim","gap"];
+
+// Canvas-drawn colors (edges, labels, gap glyph, selection ring) are not CSS,
+// so the light/dark toggle needs its own small palette here. Node-kind fill
+// colors (KIND[*].c above) stay constant across themes — they're mid-lightness
+// hues that already read fine on both a near-black and a near-white ground.
+const CANVAS_PAL = {
+  dark:  {edgeExplicit:"#5b6b83", edgeReconstructed:"#4a5975", edgeFocus:"#7d90ad",
+          gap:"#ff5c6c", gapFocus:"#ff6b7a", gapRGB:"255,92,108", gapGlyph:"#ff8a95", accent:"#57e0d8",
+          selRing:"#eafffb", nodeStroke:"rgba(6,9,14,0.65)",
+          labelFill:"#cdd8e8", labelGapFill:"#ff9aa4", labelHalo:"rgba(8,11,18,0.85)",
+          pillExplicit:"#8aa0bf", pillRecon:"#8b7fd6"},
+  light: {edgeExplicit:"#57657c", edgeReconstructed:"#7c8aa3", edgeFocus:"#3d4a63",
+          gap:"#d33444", gapFocus:"#c22a3a", gapRGB:"211,52,68", gapGlyph:"#b3243b", accent:"#0e948c",
+          selRing:"#12161f", nodeStroke:"rgba(10,14,20,0.32)",
+          labelFill:"#28303e", labelGapFill:"#9c2436", labelHalo:"rgba(255,255,255,0.9)",
+          pillExplicit:"#3f4b60", pillRecon:"#5b46b8"}
+};
+function pal(){ return CANVAS_PAL[document.documentElement.getAttribute("data-theme")==="light" ? "light" : "dark"]; }
 
 /* ---------- index the graph ---------- */
 const evById = {};        (G.evidence_spans||[]).forEach(e=>evById[e.id]=e);
@@ -99,6 +144,24 @@ function routeElems(r){
   return {nd,eg};
 }
 
+/* Union of every route feeding every result that supports this claim, plus the
+   claim itself and the supports edges — the full data→conclusion chain, not
+   just the claim's immediate neighbors. Falls back to the gap chain (source →
+   gap → claim) for a claim the paper never actually backs with a result. */
+function claimChainElems(claimId){
+  const nd=new Set([claimId]), eg=new Set();
+  edges.filter(e=>!e.gap && e.b===claimId && e.rel==="supports").forEach(e=>{
+    eg.add(e.id); nd.add(e.a);
+    const rts=routesByResult[e.a];
+    if(rts) rts.forEach(r=>{ const re=routeElems(r); re.nd.forEach(id=>nd.add(id)); re.eg.forEach(id=>eg.add(id)); });
+  });
+  gaps.filter(gp=>gp.category==="unsupported_claim" && (gp.between||[])[1]===claimId).forEach(gp=>{
+    nd.add(gp.id); eg.add(gp.id+"__in"); eg.add(gp.id+"__out");
+    const bt=gp.between||[]; if(bt[0]) nd.add(bt[0]);
+  });
+  return {nd,eg};
+}
+
 /* ---------- layout: seeded init + COOLING force sim that FREEZES when settled ----------
    Nodes are static in the steady state. Forces scale with `alpha`; alpha decays to 0 and the
    layout freezes. Dragging a node reheats alpha, so neighbors follow (gravity-drag), then it
@@ -160,13 +223,14 @@ function toScreen(x,y){ return [ (x-cam.x)*cam.z + innerWidth/2, (y-cam.y)*cam.z
 function toWorld(sx,sy){ return [ (sx-innerWidth/2)/cam.z + cam.x, (sy-innerHeight/2)/cam.z + cam.y ]; }
 
 /* ---------- selection / focus state ---------- */
-let hoverNode=null, selNode=null, selEdge=null, activeGroup=null, activeRoute=null;
+let hoverNode=null, selNode=null, selEdge=null, activeGroup=null, activeRoute=null, activeClaim=null;
 let hi = null;   // {nd:Set, eg:Set} of highlighted ids (route or neighbor focus); null = all lit
 let kindOff = new Set();
 let searchHit = new Set();
 
 function computeHighlight(){
   if(activeRoute){ hi=routeElems(activeRoute); return; }
+  if(activeClaim){ hi=claimChainElems(activeClaim); return; }
   if(selNode){
     const nd=new Set([selNode.id]), eg=new Set();
     edges.forEach(e=>{ if(e.a===selNode.id||e.b===selNode.id){eg.add(e.id);nd.add(e.a);nd.add(e.b);} });
@@ -187,6 +251,7 @@ function litEdge(e){ if(!hi) return true; return hi.eg.has(e.id); }
 /* ---------- draw ---------- */
 function relLabel(e){ return e.rel||""; }
 function draw(){
+  const P=pal();
   ctx.setTransform(DPR,0,0,DPR,0,0);
   ctx.clearRect(0,0,innerWidth,innerHeight);
   ctx.save();
@@ -198,12 +263,12 @@ function draw(){
     const lit=litEdge(e) && !kindOff.has(RN[e.a].kind) && !kindOff.has(RN[e.b].kind);
     const onSel = selEdge===e;
     let col, w, dash;
-    if(e.gap){ col="#ff5c6c"; w=1.5; dash=[1.5,5]; }
-    else if(e.level==="explicit"){ col="#5b6b83"; w=1.4; dash=[]; }
-    else { col="#4a5975"; w=1.2; dash=[5,5]; }
+    if(e.gap){ col=P.gap; w=1.5; dash=[1.5,5]; }
+    else if(e.level==="explicit"){ col=P.edgeExplicit; w=1.4; dash=[]; }
+    else { col=P.edgeReconstructed; w=1.2; dash=[5,5]; }
     ctx.globalAlpha = lit ? (e.gap?0.95:0.7) : 0.06;
-    if(onSel){col="#57e0d8";w=2.4;ctx.globalAlpha=1;}
-    else if(hi&&lit&&!hi.soft){col=e.gap?"#ff6b7a":"#7d90ad";w+=0.5;}
+    if(onSel){col=P.accent;w=2.4;ctx.globalAlpha=1;}
+    else if(hi&&lit&&!hi.soft){col=e.gap?P.gapFocus:P.edgeFocus;w+=0.5;}
     ctx.strokeStyle=col; ctx.lineWidth=w; ctx.setLineDash(dash);
     // slight curve
     const mx=(x1+x2)/2, my=(y1+y2)/2, dx=x2-x1, dy=y2-y1;
@@ -243,8 +308,8 @@ function draw(){
       const cx=mx-dy*0.08, cy=my+dx*0.08;       // same control point as the drawn edge
       const bx=it*it*x1 + 2*it*ph*cx + ph*ph*x2;
       const by=it*it*y1 + 2*it*ph*cy + ph*ph*y2;
-      const col = (selEdge===e) ? "#57e0d8"     // matches the edge's drawn colour
-                : e.gap ? "#ff6b7a" : "#7d90ad";
+      const col = (selEdge===e) ? P.accent     // matches the edge's drawn colour
+                : e.gap ? P.gapFocus : P.edgeFocus;
       ctx.globalAlpha = 0.85 * Math.sin(ph*Math.PI);  // fade in/out at the ends
       ctx.fillStyle=col; ctx.shadowColor=col; ctx.shadowBlur=6;
       ctx.beginPath(); ctx.arc(bx,by,3.3,0,7); ctx.fill();
@@ -265,11 +330,11 @@ function draw(){
       // pulsing hollow ring
       const pulse = REDUCED?0:(0.5+0.5*Math.sin(tms/420));
       ctx.beginPath(); ctx.arc(x,y,R,0,7);
-      ctx.fillStyle="rgba(255,92,108,0.10)"; ctx.fill();
+      ctx.fillStyle=`rgba(${P.gapRGB},0.10)`; ctx.fill();
       ctx.lineWidth=1.8; ctx.setLineDash([3,3]);
-      ctx.strokeStyle=`rgba(255,92,108,${lit?0.6+0.4*pulse:0.5})`; ctx.stroke();
+      ctx.strokeStyle=`rgba(${P.gapRGB},${lit?0.6+0.4*pulse:0.5})`; ctx.stroke();
       ctx.setLineDash([]);
-      if(lit){ ctx.fillStyle="#ff8a95"; ctx.font="700 "+(R*1.1)+"px ui-monospace,Menlo,monospace";
+      if(lit){ ctx.fillStyle=P.gapGlyph; ctx.font="700 "+(R*1.1)+"px ui-monospace,Menlo,monospace";
         ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText("?",x,y+0.5); }
     } else {
       if((isSel||isHover||isSearch) && lit){
@@ -277,8 +342,8 @@ function draw(){
       }
       ctx.beginPath(); ctx.arc(x,y,R,0,7);
       ctx.fillStyle=k.c; ctx.fill(); ctx.shadowBlur=0;
-      if(isSel||isSearch){ ctx.lineWidth=2; ctx.strokeStyle=isSel?"#eafffb":"#fff"; ctx.stroke(); }
-      else { ctx.lineWidth=1; ctx.strokeStyle="rgba(6,9,14,0.65)"; ctx.stroke(); }
+      if(isSel||isSearch){ ctx.lineWidth=2; ctx.strokeStyle=P.selRing; ctx.stroke(); }
+      else { ctx.lineWidth=1; ctx.strokeStyle=P.nodeStroke; ctx.stroke(); }
       // headline (core) claim → outer halo ring so it reads as a headline contribution
       if(n.kind==="claim" && headlineClaims.has(n.id)){
         ctx.globalAlpha = lit?0.95:0.11; ctx.lineWidth=1.6; ctx.strokeStyle=k.c;
@@ -291,8 +356,8 @@ function draw(){
       ctx.font=(isSel?"600 ":"500 ")+"12px ui-sans-serif,-apple-system,'Segoe UI',sans-serif";
       ctx.textAlign="center"; ctx.textBaseline="top";
       ctx.globalAlpha=lit?(isHover||isSel?1:0.82):0.11;
-      ctx.lineWidth=3; ctx.strokeStyle="rgba(8,11,18,0.85)"; ctx.lineJoin="round";
-      ctx.strokeText(t,x,y+R+4); ctx.fillStyle=n.gap?"#ff9aa4":"#cdd8e8"; ctx.fillText(t,x,y+R+4);
+      ctx.lineWidth=3; ctx.strokeStyle=P.labelHalo; ctx.lineJoin="round";
+      ctx.strokeText(t,x,y+R+4); ctx.fillStyle=n.gap?P.labelGapFill:P.labelFill; ctx.fillText(t,x,y+R+4);
     }
   });
 
@@ -368,17 +433,17 @@ cv.addEventListener("wheel",ev=>{ ev.preventDefault();
 
 /* ---------- selection actions ---------- */
 function selectNode(n){
-  selEdge=null; selNode=n;
+  selEdge=null; selNode=n; activeRoute=null; activeClaim=null;
   // if a result with route(s) -> activate route trace (Level 2)
   if(!n.gap && n.kind==="result" && routesByResult[n.id]){ activeRoute=routesByResult[n.id][0]; }
-  else if(!n.gap && n.kind==="claim"){ activeRoute=null; }
-  else activeRoute=null;
+  // a claim -> trace the full chain(s) feeding it, same "Level 2" treatment as a result
+  else if(!n.gap && n.kind==="claim"){ activeClaim=n.id; }
   activeGroup=null; syncGroupUI();
   computeHighlight(); renderInspector(); renderCrumb();
   focusOn(n);
 }
-function selectEdge(e){ selNode=null;activeRoute=null;activeGroup=null;syncGroupUI(); selEdge=e; hi=null; renderInspectorEdge(e); renderCrumb(); }
-function clearSel(){ selNode=null;selEdge=null;activeRoute=null;activeGroup=null;syncGroupUI();hi=null;
+function selectEdge(e){ selNode=null;activeRoute=null;activeClaim=null;activeGroup=null;syncGroupUI(); selEdge=e; hi=null; renderInspectorEdge(e); renderCrumb(); }
+function clearSel(){ selNode=null;selEdge=null;activeRoute=null;activeClaim=null;activeGroup=null;syncGroupUI();hi=null;
   closeInspector(); renderCrumb(); }
 function focusOn(n){ // ease camera toward node
   const tx=n.x, ty=n.y; const s=cam.z<0.8?1.05:cam.z;
@@ -525,7 +590,7 @@ function renderInspectorEdge(e){
   openInspector();
   const head=document.getElementById("pg-ihead-inner"), body=document.getElementById("pg-ibody");
   const p=RN[e.a],q=RN[e.b];
-  head.innerHTML = `<span class="kindpill" style="color:${e.level==="explicit"?"#8aa0bf":"#8b7fd6"}"><span class="d"></span>${esc(e.rel)} · ${esc(e.level)}</span>
+  head.innerHTML = `<span class="kindpill" style="color:${e.level==="explicit"?pal().pillExplicit:pal().pillRecon}"><span class="d"></span>${esc(e.rel)} · ${esc(e.level)}</span>
     <div class="ititle">${esc(p.label)} <span style="color:var(--ink-faint)">→</span> ${esc(q.label)}</div>`;
   let h="";
   if(e.ref.rationale) h+=`<div class="sec"><div class="sh">Why this link</div><div class="rationale">${esc(e.ref.rationale)}</div></div>`;
@@ -546,6 +611,9 @@ function renderCrumb(){
   const c=document.getElementById("pg-crumb");
   if(activeRoute){ const res=nodeById[activeRoute.result_id];
     c.style.display="flex"; c.innerHTML=`<span class="lvl">route</span><span>${esc(res?res.label:activeRoute.result_id)}</span><span class="x">✕</span>`;
+    c.querySelector(".x").onclick=clearSel; return; }
+  if(activeClaim){ const n=nodeById[activeClaim];
+    c.style.display="flex"; c.innerHTML=`<span class="lvl">chain</span><span>${esc(n?n.label:activeClaim)}</span><span class="x">✕</span>`;
     c.querySelector(".x").onclick=clearSel; return; }
   if(activeGroup){ c.style.display="flex"; c.innerHTML=`<span class="lvl">group</span><span>${esc(activeGroup.title)}</span><span class="x">✕</span>`;
     c.querySelector(".x").onclick=()=>{activeGroup=null;syncGroupUI();computeHighlight();renderCrumb();}; return; }
@@ -581,7 +649,7 @@ function buildGroups(){
   }).join("");
   el.querySelectorAll(".g").forEach(row=>row.addEventListener("click",()=>{
     const g=groups[+row.getAttribute("data-g")];
-    if(activeGroup===g){ activeGroup=null; } else { activeGroup=g; selNode=null;selEdge=null;activeRoute=null; }
+    if(activeGroup===g){ activeGroup=null; } else { activeGroup=g; selNode=null;selEdge=null;activeRoute=null;activeClaim=null; }
     syncGroupUI(); computeHighlight(); renderCrumb();
     if(activeGroup){ closeInspector(); fitGroup(activeGroup); }
   }));
