@@ -214,9 +214,15 @@ function tick(){
 
 /* ---------- canvas / camera ---------- */
 const cv=document.getElementById("pg-canvas"), ctx=cv.getContext("2d");
-let DPR=Math.min(window.devicePixelRatio||1,2);
+// Canvas text/lines only get single-sample AA, so on a standard (non-Retina)
+// display where devicePixelRatio is 1, they read visibly softer than the
+// browser-rendered DOM text next to them. Floor the backing-store multiplier
+// at 2x regardless of the real devicePixelRatio -- free supersampling that
+// makes canvas-drawn text match the sidebar's crispness on any monitor.
+function pickDPR(){ return Math.min(Math.max(window.devicePixelRatio||1,2),3); }
+let DPR=pickDPR();
 let cam={x:0,y:0,z:0.9};
-function resize(){ DPR=Math.min(window.devicePixelRatio||1,2);
+function resize(){ DPR=pickDPR();
   cv.width=innerWidth*DPR; cv.height=innerHeight*DPR; cv.style.width=innerWidth+"px"; cv.style.height=innerHeight+"px"; }
 addEventListener("resize",resize); resize();
 function toScreen(x,y){ return [ (x-cam.x)*cam.z + innerWidth/2, (y-cam.y)*cam.z + innerHeight/2 ]; }
