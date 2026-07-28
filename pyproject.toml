@@ -25,6 +25,9 @@ classifiers = [
 Homepage = "https://github.com/ZakuZakuu/papergraph"
 Repository = "https://github.com/ZakuZakuu/papergraph"
 
+[project.optional-dependencies]
+dev = ["pytest>=7", "build>=1"]
+
 [project.scripts]
 papergraph = "papergraph.cli:main"
 

@@ -1,0 +1,72 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install build tooling + run the full test suite first
+        run: |
+          python -m pip install -e ".[dev]"
+          python -m pytest tests/ -v
+
+      - name: Build wheel + sdist
+        run: python -m build
+
+      - name: Build a zero-install .pyz
+        run: |
+          mkdir -p /tmp/pg-pyz-build
+          cp -r src/papergraph /tmp/pg-pyz-build/
+          python -m zipapp /tmp/pg-pyz-build -m "papergraph.cli:main" \
+            -o dist/papergraph.pyz -p "/usr/bin/env python3"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  publish-pypi:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write  # OIDC trusted publishing; no PyPI token stored here
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Remove the .pyz before publishing to PyPI (wheel/sdist only)
+        run: rm -f dist/papergraph.pyz
+
+      - uses: pypa/gh-action-pypi-publish@release/v1
+
+  github-release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Attach dist artifacts (wheel, sdist, .pyz) to the GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/*.whl
+            dist/*.tar.gz
+            dist/papergraph.pyz
