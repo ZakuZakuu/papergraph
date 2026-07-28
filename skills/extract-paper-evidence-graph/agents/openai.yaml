@@ -1,0 +1,4 @@
+interface:
+  display_name: "Extract Paper Evidence Graph"
+  short_description: "Extract auditable evidence graphs from research papers"
+  default_prompt: "Use $extract-paper-evidence-graph to extract this paper into an evidence-grounded JSON graph."

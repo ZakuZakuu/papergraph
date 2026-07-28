@@ -1,0 +1,494 @@
+{
+  "format_version": "paper-evidence-graph/0.2",
+  "paper": {
+    "paper_id": "synthnet_demo",
+    "title": "SynthNet: A Synthetic Benchmark Paper for papergraph Fixtures",
+    "source_path": "fixtures/synthetic/paper.json",
+    "source_type": "normalized_json",
+    "authoritative_representation": "normalized JSON pages and stable spans"
+  },
+  "evidence_spans": [
+    {
+      "id": "ev_p1_s01",
+      "page": 1,
+      "locator": "Model",
+      "quote": "SynthNet is a small convolutional model trained on the Widget benchmark.",
+      "source_span_ids": [
+        "p1-s01"
+      ],
+      "quote_fidelity": "exact"
+    },
+    {
+      "id": "ev_p1_s02",
+      "page": 1,
+      "locator": "Method",
+      "quote": "We evaluate SynthNet using the Standard Evaluation Procedure with batch size 32.",
+      "source_span_ids": [
+        "p1-s02"
+      ],
+      "quote_fidelity": "exact"
+    },
+    {
+      "id": "ev_p1_s03",
+      "page": 1,
+      "locator": "Method",
+      "quote": "The learning rate configuration was set to 0.001 for all training runs.",
+      "source_span_ids": [
+        "p1-s03"
+      ],
+      "quote_fidelity": "exact"
+    },
+    {
+      "id": "ev_p2_t1_row1",
+      "page": 2,
+      "locator": "Table 1",
+      "quote": "Baseline accuracy: 71.2%",
+      "source_span_ids": [
+        "p2-t1-row1"
+      ],
+      "quote_fidelity": "exact"
+    },
+    {
+      "id": "ev_p2_t1_row2",
+      "page": 2,
+      "locator": "Table 1",
+      "quote": "SynthNet accuracy: 84.5%",
+      "source_span_ids": [
+        "p2-t1-row2"
+      ],
+      "quote_fidelity": "exact"
+    },
+    {
+      "id": "ev_p2_s01",
+      "page": 2,
+      "locator": "Results",
+      "quote": "SynthNet substantially outperforms the Baseline on Widget accuracy.",
+      "source_span_ids": [
+        "p2-s01"
+      ],
+      "quote_fidelity": "exact"
+    },
+    {
+      "id": "ev_p2_s02",
+      "page": 2,
+      "locator": "Results",
+      "quote": "We further claim SynthNet generalizes to unseen domains, though no cross-domain experiment is reported in this paper.",
+      "source_span_ids": [
+        "p2-s02"
+      ],
+      "quote_fidelity": "exact"
+    },
+    {
+      "id": "ev_p3_a_row1",
+      "page": 3,
+      "locator": "Appendix A",
+      "quote": "Ablation (no LR schedule) accuracy: 60.0%",
+      "source_span_ids": [
+        "p3-a-row1"
+      ],
+      "quote_fidelity": "exact"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "art_synthnet",
+      "kind": "artifact",
+      "label": "SynthNet model",
+      "evidence_ids": [
+        "ev_p1_s01"
+      ],
+      "details": {}
+    },
+    {
+      "id": "proc_eval",
+      "kind": "procedure",
+      "label": "Standard Evaluation Procedure",
+      "evidence_ids": [
+        "ev_p1_s02"
+      ],
+      "details": {}
+    },
+    {
+      "id": "cfg_lr",
+      "kind": "configuration",
+      "label": "Learning rate = 0.001",
+      "evidence_ids": [
+        "ev_p1_s03"
+      ],
+      "details": {}
+    },
+    {
+      "id": "res_baseline",
+      "kind": "result",
+      "label": "Baseline",
+      "system_or_condition": "Baseline",
+      "paper_locator": "Table 1",
+      "evidence_ids": [
+        "ev_p2_t1_row1"
+      ],
+      "measurements": [
+        {
+          "id": "res_baseline__accuracy",
+          "metric": "accuracy",
+          "raw_text": "71.2",
+          "numeric_value": 71.2,
+          "unit": "%",
+          "qualifier": null,
+          "direction": "higher_is_better",
+          "availability": "reported",
+          "uncertainty": null,
+          "evidence_ids": [
+            "ev_p2_t1_row1"
+          ]
+        }
+      ],
+      "details": {}
+    },
+    {
+      "id": "res_synthnet",
+      "kind": "result",
+      "label": "SynthNet",
+      "system_or_condition": "SynthNet",
+      "paper_locator": "Table 1",
+      "evidence_ids": [
+        "ev_p2_t1_row2"
+      ],
+      "measurements": [
+        {
+          "id": "res_synthnet__accuracy",
+          "metric": "accuracy",
+          "raw_text": "84.5",
+          "numeric_value": 84.5,
+          "unit": "%",
+          "qualifier": null,
+          "direction": "higher_is_better",
+          "availability": "reported",
+          "uncertainty": null,
+          "evidence_ids": [
+            "ev_p2_t1_row2"
+          ]
+        }
+      ],
+      "details": {}
+    },
+    {
+      "id": "clm_synthnet_beats_baseline",
+      "kind": "claim",
+      "label": "SynthNet beats the Baseline on Widget accuracy",
+      "claim_form": "comparative",
+      "salience_evidence_ids": [
+        "ev_p2_s01"
+      ],
+      "evidence_ids": []
+    },
+    {
+      "id": "clm_synthnet_generalizes",
+      "kind": "claim",
+      "label": "SynthNet generalizes to unseen domains",
+      "claim_form": "interpretive",
+      "salience_evidence_ids": [
+        "ev_p2_s02"
+      ],
+      "evidence_ids": []
+    },
+    {
+      "id": "res_ablation",
+      "kind": "result",
+      "label": "Ablation (no LR schedule)",
+      "system_or_condition": "Ablation (no LR schedule)",
+      "paper_locator": "Appendix A",
+      "evidence_ids": [
+        "ev_p3_a_row1"
+      ],
+      "measurements": [
+        {
+          "id": "res_ablation__accuracy",
+          "metric": "accuracy",
+          "raw_text": "60.0",
+          "numeric_value": 60.0,
+          "unit": "%",
+          "qualifier": null,
+          "direction": "higher_is_better",
+          "availability": "reported",
+          "uncertainty": null,
+          "evidence_ids": [
+            "ev_p3_a_row1"
+          ]
+        }
+      ],
+      "details": {}
+    }
+  ],
+  "edges": [
+    {
+      "id": "edge_synthnet_evaluated_by",
+      "from": "art_synthnet",
+      "relation": "evaluated_by",
+      "to": "proc_eval",
+      "assertion_level": "explicit",
+      "evidence_ids": [
+        "ev_p1_s01",
+        "ev_p1_s02"
+      ],
+      "rationale": "The method section states SynthNet is run through the Standard Evaluation Procedure."
+    },
+    {
+      "id": "edge_lr_configures_eval",
+      "from": "cfg_lr",
+      "relation": "configures",
+      "to": "proc_eval",
+      "assertion_level": "reconstructed",
+      "evidence_ids": [
+        "ev_p1_s03"
+      ],
+      "rationale": "The learning rate is reported alongside the evaluation procedure but its binding to that run is inferred, not stated as a direct edge."
+    },
+    {
+      "id": "edge_eval_produces_baseline",
+      "from": "proc_eval",
+      "relation": "produces",
+      "to": "res_baseline",
+      "assertion_level": "explicit",
+      "evidence_ids": [
+        "ev_p2_t1_row1"
+      ],
+      "rationale": "Table 1 reports the Baseline row as output of the evaluation procedure."
+    },
+    {
+      "id": "edge_eval_produces_synthnet_result",
+      "from": "proc_eval",
+      "relation": "produces",
+      "to": "res_synthnet",
+      "assertion_level": "explicit",
+      "evidence_ids": [
+        "ev_p2_t1_row2"
+      ],
+      "rationale": "Table 1 reports the SynthNet row as output of the evaluation procedure."
+    },
+    {
+      "id": "edge_synthnet_result_supports_claim",
+      "from": "res_synthnet",
+      "relation": "supports",
+      "to": "clm_synthnet_beats_baseline",
+      "assertion_level": "explicit",
+      "evidence_ids": [
+        "ev_p2_s01"
+      ],
+      "rationale": "84.5% vs 71.2% directly grounds the comparative claim in the reported results.",
+      "measurement_ids": [
+        "res_synthnet__accuracy"
+      ],
+      "comparison_result_ids": [
+        "res_baseline"
+      ]
+    }
+  ],
+  "gaps": [
+    {
+      "id": "gap_generalization_unsupported",
+      "category": "unsupported_claim",
+      "affects": [
+        "clm_synthnet_generalizes"
+      ],
+      "missing_content": "No cross-domain generalization experiment or measurement is reported anywhere in the paper.",
+      "searched_locations": [
+        "Results",
+        "Method"
+      ],
+      "question": "What evidence, if any, supports SynthNet's claimed cross-domain generalization?"
+    },
+    {
+      "id": "gap_missing_ablation_procedure",
+      "category": "missing_producer",
+      "affects": [
+        "route_ablation_accuracy"
+      ],
+      "expected_kind": "procedure",
+      "between": [
+        "art_synthnet",
+        "res_ablation"
+      ],
+      "missing_content": "No procedure describes how the ablation condition (no learning-rate schedule) was run to produce this result.",
+      "searched_locations": [
+        "Appendix A",
+        "Method"
+      ],
+      "question": "What procedure, if any, produced the ablation result reported in Appendix A?"
+    }
+  ],
+  "provenance_routes": [
+    {
+      "id": "route_synthnet_accuracy",
+      "result_id": "res_synthnet",
+      "subject_procedure_ids": [
+        "proc_eval"
+      ],
+      "subject_output_id": "art_synthnet",
+      "subject_variant": {
+        "label": "SynthNet",
+        "condition_evidence_ids": [
+          "ev_p2_t1_row2"
+        ],
+        "distinguishing_configuration_ids": [
+          "cfg_lr"
+        ]
+      },
+      "measurement_ids": [
+        "res_synthnet__accuracy"
+      ],
+      "path": [
+        "art_synthnet",
+        "proc_eval",
+        "res_synthnet"
+      ],
+      "additional_input_ids": [],
+      "configuration_ids": [
+        "cfg_lr"
+      ],
+      "gap_ids": [],
+      "path_edge_ids": [
+        "edge_synthnet_evaluated_by",
+        "edge_eval_produces_synthnet_result"
+      ],
+      "branch_edge_ids": [
+        "edge_lr_configures_eval"
+      ],
+      "assertion_level": "explicit"
+    },
+    {
+      "id": "route_baseline_accuracy",
+      "result_id": "res_baseline",
+      "subject_procedure_ids": [
+        "proc_eval"
+      ],
+      "subject_output_id": "art_synthnet",
+      "subject_variant": {
+        "label": "Baseline",
+        "condition_evidence_ids": [
+          "ev_p2_t1_row1"
+        ],
+        "distinguishing_configuration_ids": []
+      },
+      "measurement_ids": [
+        "res_baseline__accuracy"
+      ],
+      "path": [
+        "art_synthnet",
+        "proc_eval",
+        "res_baseline"
+      ],
+      "additional_input_ids": [],
+      "configuration_ids": [],
+      "gap_ids": [],
+      "path_edge_ids": [
+        "edge_synthnet_evaluated_by",
+        "edge_eval_produces_baseline"
+      ],
+      "branch_edge_ids": [],
+      "assertion_level": "explicit"
+    },
+    {
+      "id": "route_ablation_accuracy",
+      "result_id": "res_ablation",
+      "subject_procedure_ids": [],
+      "subject_output_id": null,
+      "subject_variant": {
+        "label": "Ablation (no LR schedule)",
+        "condition_evidence_ids": [],
+        "distinguishing_configuration_ids": []
+      },
+      "measurement_ids": [
+        "res_ablation__accuracy"
+      ],
+      "path": [
+        "art_synthnet",
+        "gap_missing_ablation_procedure",
+        "res_ablation"
+      ],
+      "additional_input_ids": [],
+      "configuration_ids": [],
+      "gap_ids": [
+        "gap_missing_ablation_procedure"
+      ],
+      "path_edge_ids": [
+        null,
+        null
+      ],
+      "branch_edge_ids": [],
+      "assertion_level": "reconstructed"
+    }
+  ],
+  "contribution_groups": [
+    {
+      "id": "cg_synthnet_widget_eval",
+      "title": "SynthNet Widget-benchmark evaluation",
+      "type": "mixed",
+      "salience_evidence_ids": [
+        "ev_p1_s01"
+      ],
+      "member_node_ids": [
+        "art_synthnet",
+        "proc_eval",
+        "cfg_lr",
+        "res_baseline",
+        "res_synthnet"
+      ],
+      "headline_claim_ids": [
+        "clm_synthnet_beats_baseline",
+        "clm_synthnet_generalizes"
+      ]
+    }
+  ],
+  "headline_scan": [
+    {
+      "obligation_id": "headline_synthnet_accuracy_claim",
+      "evidence_ids": [
+        "ev_p2_s01"
+      ],
+      "disposition": "empirical_claim",
+      "target_ids": [
+        "clm_synthnet_beats_baseline"
+      ],
+      "reason": "Direct empirical comparative claim reported in results."
+    },
+    {
+      "obligation_id": "headline_synthnet_generalization_claim",
+      "evidence_ids": [
+        "ev_p2_s02"
+      ],
+      "disposition": "empirical_claim",
+      "target_ids": [
+        "clm_synthnet_generalizes"
+      ],
+      "reason": "Claim is stated but unsupported by any reported experiment (deliberate gap fixture)."
+    }
+  ],
+  "result_region_scan": [
+    {
+      "region": "Table 1",
+      "decision": "included_full",
+      "reason": "Both rows in the two-row results table are represented.",
+      "evidence_ids": [
+        "ev_p2_t1_row1",
+        "ev_p2_t1_row2"
+      ],
+      "planned_unit_labels": [
+        "Baseline",
+        "SynthNet"
+      ],
+      "extracted_result_ids": [
+        "res_baseline",
+        "res_synthnet"
+      ],
+      "missing_planned_units": [],
+      "unexpected_units": []
+    }
+  ],
+  "extraction": {
+    "coverage_plan_path": "coverage-plan.json",
+    "coverage_plan_frozen_before_graph": true,
+    "review_passes": 1,
+    "status": "complete",
+    "limitations": []
+  }
+}

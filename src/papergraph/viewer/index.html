@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>papergraph — evidence graph</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div id="pg-root">
+  <canvas id="pg-canvas"></canvas>
+
+  <div id="pg-top">
+    <div class="brand">
+      <span class="mark"></span>
+      <h1>papergraph</h1>
+      <span class="sub">evidence-graph viewer</span>
+    </div>
+    <span class="paper" id="pg-paper"></span>
+  </div>
+
+  <div id="pg-rail">
+    <div class="card">
+      <input class="search" id="pg-search" placeholder="search nodes…" autocomplete="off" spellcheck="false">
+    </div>
+    <div class="card">
+      <h2>Node kinds</h2>
+      <div class="legend" id="pg-legend"></div>
+    </div>
+    <div class="card">
+      <h2>Contribution groups</h2>
+      <div class="grp" id="pg-groups"></div>
+    </div>
+    <div class="card">
+      <h2>Graph</h2>
+      <div class="stats" id="pg-stats"></div>
+    </div>
+  </div>
+
+  <div id="pg-insp">
+    <div class="ihead">
+      <button class="iclose" id="pg-close" title="Close (Esc)">✕</button>
+      <div id="pg-ihead-inner"></div>
+    </div>
+    <div class="ibody" id="pg-ibody"></div>
+  </div>
+
+  <div id="pg-bot">
+    <div class="zoom">
+      <button id="pg-zin" title="Zoom in">+</button>
+      <button id="pg-zout" title="Zoom out">−</button>
+      <button id="pg-zfit" title="Fit / reset" style="width:auto;padding:0 8px;font-size:11px;font-family:var(--mono)">fit</button>
+    </div>
+    <div class="crumb" id="pg-crumb" style="display:none"></div>
+    <div class="hint"><b>drag</b> pan · <b>scroll</b> zoom · <b>click</b> a claim/result to trace its route</div>
+  </div>
+
+  <div id="pg-tip"></div>
+</div>
+  <script src="app.js"></script>
+</body>
+</html>

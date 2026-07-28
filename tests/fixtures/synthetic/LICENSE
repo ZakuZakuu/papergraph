@@ -1,0 +1,9 @@
+CC0 1.0 Universal
+
+The files in this directory (paper.json, graph.json, coverage-plan.json) are a
+wholly synthetic, invented fixture ("SynthNet") written for papergraph's public
+test suite. To the extent possible under law, the authors have waived all
+copyright and related or neighboring rights to this fixture. No real paper,
+dataset, or author is represented.
+
+https://creativecommons.org/publicdomain/zero/1.0/

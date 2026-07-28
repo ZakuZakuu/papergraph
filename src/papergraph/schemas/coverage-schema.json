@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "paper-evidence-coverage/0.1/coverage-schema.json",
+  "title": "Paper evidence coverage plan (coverage-plan.json)",
+  "description": "Executable structural contract for format_version paper-evidence-coverage/0.1. Frozen before the graph; reconciled against the graph by the validator.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format_version", "paper_id", "frozen_before_graph", "headline_locations", "headline_obligations", "result_regions"],
+  "properties": {
+    "format_version": {"const": "paper-evidence-coverage/0.1"},
+    "paper_id": {"type": "string", "minLength": 1},
+    "frozen_before_graph": {"type": "boolean"},
+    "headline_locations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["locator", "source_span_ids"],
+        "properties": {
+          "locator": {"type": "string", "minLength": 1},
+          "source_span_ids": {"type": "array", "items": {"type": "string"}}
+        }
+      }
+    },
+    "headline_obligations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "source_span_ids", "statement"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "source_span_ids": {"type": "array", "items": {"type": "string"}},
+          "statement": {"type": "string", "minLength": 1},
+          "required_disposition": {"type": "string"}
+        }
+      }
+    },
+    "result_regions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["locator", "expected_unit_count", "unit_labels", "count_matches_unit_labels"],
+        "properties": {
+          "locator": {"type": "string", "minLength": 1},
+          "source_span_ids": {"type": "array", "items": {"type": "string"}},
+          "expected_unit_count": {"type": ["integer", "null"]},
+          "unit_labels": {"type": "array", "items": {"type": "string"}},
+          "count_matches_unit_labels": {"type": "boolean"},
+          "must_capture": {"type": "array", "items": {"type": "string"}},
+          "derived_regions": {"type": "array", "items": {"type": "string"}}
+        }
+      }
+    },
+    "condition_label_audit": {"type": "array", "items": {"type": "object"}},
+    "structure_candidates": {"type": "array", "items": {"type": "string"}},
+    "configuration_families": {"type": "array", "items": {"type": "string"}},
+    "route_obligations": {"type": "array", "items": {"type": "object"}},
+    "ambiguity_probes": {"type": "array", "items": {"type": "string"}},
+    "later_discoveries": {"type": "array"}
+  }
+}

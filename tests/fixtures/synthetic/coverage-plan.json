@@ -1,0 +1,43 @@
+{
+  "format_version": "paper-evidence-coverage/0.1",
+  "paper_id": "synthnet_demo",
+  "frozen_before_graph": true,
+  "headline_locations": [
+    {
+      "locator": "Results",
+      "source_span_ids": [
+        "p2-s01",
+        "p2-s02"
+      ]
+    }
+  ],
+  "headline_obligations": [
+    {
+      "id": "headline_synthnet_accuracy_claim",
+      "source_span_ids": [
+        "p2-s01"
+      ],
+      "statement": "SynthNet substantially outperforms the Baseline on Widget accuracy."
+    },
+    {
+      "id": "headline_synthnet_generalization_claim",
+      "source_span_ids": [
+        "p2-s02"
+      ],
+      "statement": "SynthNet generalizes to unseen domains."
+    }
+  ],
+  "result_regions": [
+    {
+      "locator": "Table 1",
+      "expected_unit_count": 2,
+      "unit_labels": [
+        "Baseline",
+        "SynthNet"
+      ],
+      "count_matches_unit_labels": true,
+      "must_capture": [],
+      "derived_regions": []
+    }
+  ]
+}

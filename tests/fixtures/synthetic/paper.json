@@ -1,0 +1,51 @@
+{
+  "pages": [
+    {
+      "page": 1,
+      "spans": [
+        {
+          "span_id": "p1-s01",
+          "text": "SynthNet is a small convolutional model trained on the Widget benchmark."
+        },
+        {
+          "span_id": "p1-s02",
+          "text": "We evaluate SynthNet using the Standard Evaluation Procedure with batch size 32."
+        },
+        {
+          "span_id": "p1-s03",
+          "text": "The learning rate configuration was set to 0.001 for all training runs."
+        }
+      ]
+    },
+    {
+      "page": 2,
+      "spans": [
+        {
+          "span_id": "p2-t1-row1",
+          "text": "Baseline accuracy: 71.2%"
+        },
+        {
+          "span_id": "p2-t1-row2",
+          "text": "SynthNet accuracy: 84.5%"
+        },
+        {
+          "span_id": "p2-s01",
+          "text": "SynthNet substantially outperforms the Baseline on Widget accuracy."
+        },
+        {
+          "span_id": "p2-s02",
+          "text": "We further claim SynthNet generalizes to unseen domains, though no cross-domain experiment is reported in this paper."
+        }
+      ]
+    },
+    {
+      "page": 3,
+      "spans": [
+        {
+          "span_id": "p3-a-row1",
+          "text": "Ablation (no LR schedule) accuracy: 60.0%"
+        }
+      ]
+    }
+  ]
+}
