@@ -13,13 +13,13 @@ references in the viewer (no CDN, no fonts, no network calls).
 Install the extraction skill:
 
 ```
-npx skills add USER/papergraph --skill extract-paper-evidence-graph
+npx skills add ZakuZakuu/papergraph --skill extract-paper-evidence-graph
 ```
 
 Or, for any agent that can fetch a URL, one line:
 
 > Read
-> https://raw.githubusercontent.com/USER/papergraph/main/skills/extract-paper-evidence-graph/SKILL.md
+> https://raw.githubusercontent.com/ZakuZakuu/papergraph/main/skills/extract-paper-evidence-graph/SKILL.md
 > and follow it to extract this paper's evidence graph. Then `pip install
 > papergraph` (or download `papergraph.pyz` from the Releases page) and run
 > `papergraph build` to visualize it.
