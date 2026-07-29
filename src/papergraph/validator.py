@@ -12,6 +12,7 @@ concerns.
 """
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from papergraph import model
@@ -204,6 +205,92 @@ def _check_node_reserved_fields(view: GraphView, c: IssueCollector) -> None:
             if reserved in details:
                 c.add("kind_field_in_details", f"nodes[{i}].details.{reserved}",
                       f"kind-specific field {reserved!r} must live at the node top level, not in details")
+
+
+# --- source path privacy -------------------------------------------------------
+
+
+_ABS_PATH_RE = re.compile(r"^(?:/|[A-Za-z]:[\\/]|\\\\)")
+
+
+def _check_source_path_privacy(view: GraphView, c: IssueCollector) -> None:
+    """``paper.source_path`` must be shareable: relative, redacted, or a
+    basename -- never a private absolute filesystem path that leaks a real
+    user's home directory or username into every copy of the graph."""
+    paper = _as_dict(view.raw.get("paper"))
+    path = paper.get("source_path")
+    if isinstance(path, str) and _ABS_PATH_RE.match(path):
+        c.add("private_source_path", "paper.source_path",
+              f"source_path looks like a private absolute filesystem path ({path!r}); "
+              "use a relative path, a basename, or a redacted placeholder", layer="privacy")
+
+
+# --- measurement raw_text grounding --------------------------------------------
+
+
+def _check_measurement_raw_text_grounded(view: GraphView, c: IssueCollector) -> None:
+    """Every reported ``raw_text`` (the literal printed token, e.g. ``15/16`` or
+    ``15.2 +/- 2.0%``) must occur verbatim in at least one evidence quote the
+    measurement itself cites. Catches silent value truncation (e.g. a paired
+    value ``15/16`` recorded as just ``15``) that schema/reference checks can't
+    see. Skipped when the measurement cites no evidence (unresolved_ref, if
+    the id itself is bad, is already reported by _check_references)."""
+    ev_by_id = view.evidence_by_id()
+    for i, node in enumerate(view.nodes):
+        if node.get("kind") != "result":
+            continue
+        for m, meas in enumerate(_as_list(node.get("measurements"))):
+            meas = _as_dict(meas)
+            raw_text = meas.get("raw_text")
+            if not isinstance(raw_text, str) or not raw_text.strip():
+                continue
+            quotes = [
+                ev_by_id[eid]["quote"]
+                for eid in _as_list(meas.get("evidence_ids"))
+                if isinstance(eid, str) and eid in ev_by_id and isinstance(ev_by_id[eid].get("quote"), str)
+            ]
+            if not quotes:
+                continue
+            if raw_text not in " ".join(quotes):
+                c.add("measurement_raw_text_not_in_quote", f"nodes[{i}].measurements[{m}].raw_text",
+                      f"measurement raw_text {raw_text!r} does not occur in its evidence quote(s)",
+                      layer="structural")
+
+
+# --- locator vs quote table/figure number --------------------------------------
+
+
+_LOCATOR_NUM_RE = re.compile(r"\b(table|figure|fig\.?)\s*(\d+)\b", re.IGNORECASE)
+
+
+def _locator_kind(raw: str) -> str:
+    k = raw.lower().rstrip(".")
+    return "figure" if k.startswith("fig") else k
+
+
+def _check_locator_quote_number_match(view: GraphView, c: IssueCollector) -> None:
+    """A ``Table N``/``Figure N`` locator's quote must not itself name a
+    *different* table/figure number of the same kind -- a deterministic
+    signal that the wrong passage got attached to this evidence span (the
+    exact class of error that produced 18 mismatches in one real extraction).
+    Cross-references inside a caption are a possible false positive; this is
+    a mechanical heuristic, not a semantic judgement."""
+    for i, ev in enumerate(view.evidence_spans):
+        locator, quote = ev.get("locator"), ev.get("quote")
+        if not isinstance(locator, str) or not isinstance(quote, str):
+            continue
+        loc_m = _LOCATOR_NUM_RE.search(locator)
+        if not loc_m:
+            continue
+        loc_kind, loc_num = _locator_kind(loc_m.group(1)), loc_m.group(2)
+        mismatches = sorted({
+            qm.group(2) for qm in _LOCATOR_NUM_RE.finditer(quote)
+            if _locator_kind(qm.group(1)) == loc_kind and qm.group(2) != loc_num
+        })
+        if mismatches:
+            c.add("locator_quote_number_mismatch", f"evidence_spans[{i}].locator",
+                  f"locator {locator!r} cites {loc_kind} {loc_num} but the quote mentions "
+                  f"{loc_kind} {mismatches}", layer="structural")
 
 
 # --- measurement ownership ----------------------------------------------------
@@ -439,6 +526,9 @@ def validate(graph: Any, coverage: Any = None, source: Source | None = None) -> 
     _check_references(view, c)
     _check_evidence_source(view, source, c)
     _check_node_reserved_fields(view, c)
+    _check_source_path_privacy(view, c)
+    _check_measurement_raw_text_grounded(view, c)
+    _check_locator_quote_number_match(view, c)
     _check_measurement_ownership(view, c)
     _check_routes(view, c)
     _check_contribution_groups(view, c)

@@ -36,6 +36,14 @@ Treat one representation as authoritative. Do not silently supplement it with
 web searches, reviews, code, or prior extractions unless the user explicitly
 requests outside-source analysis.
 
+When you must build the span representation yourself (inputs 2-4), a
+whole-page span is a last resort, not a convenience default. Reject it
+whenever a finer unit (line, sentence, caption, or table row) is buildable
+from the source — see `references/extraction-method.md` §11 Locality. A
+paper with a normal text layer almost always allows finer spans; only fall
+back to page-level when the source genuinely has no finer structure (e.g. a
+scanned image with no extractable text layout).
+
 ## Required Outputs
 
 Write all three beside the requested output location:

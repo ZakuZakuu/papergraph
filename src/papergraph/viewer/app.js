@@ -86,6 +86,7 @@ const nodeById = {};      rawNodes.forEach(n=>nodeById[n.id]=n);
 const groups = G.contribution_groups||[];
 const gaps = G.gaps||[];
 const routes = G.provenance_routes||[];
+const routesById = {};    routes.forEach(r=>routesById[r.id]=r);
 // headline (core) claims are declared on the contribution groups
 const groupById={}; groups.forEach(gr=>groupById[gr.id]=gr);
 const headlineClaims=new Set(); const claimGroups={};
@@ -109,6 +110,19 @@ gaps.forEach(gp=>{
   if(bt.length===2 && RN[bt[0]] && RN[bt[1]]){
     edges.push({id:gp.id+"__in", a:bt[0], b:gp.id, rel:gp.category, level:"gap", ref:gp, gap:true});
     edges.push({id:gp.id+"__out",a:gp.id, b:bt[1], rel:gp.category, level:"gap", ref:gp, gap:true});
+  } else {
+    // No usable two-ended `between` -- fall back to one dotted annotation edge
+    // per `affects` entry (a node directly, or a route's terminal Result as
+    // its visual stand-in), so a result-affecting Gap isn't left as a fully
+    // disconnected island with nothing on the canvas showing what it affects.
+    const seen=new Set(); let i=0;
+    (gp.affects||[]).forEach(aff=>{
+      const target = RN[aff] ? aff : (routesById[aff] ? routesById[aff].result_id : null);
+      if(target && RN[target] && !seen.has(target)){
+        seen.add(target);
+        edges.push({id:gp.id+"__aff"+(i++), a:gp.id, b:target, rel:"affects", level:"gap", ref:gp, gap:true, annotation:true});
+      }
+    });
   }
 });
 const edgeById={}; edges.forEach(e=>edgeById[e.id]=e);
@@ -587,8 +601,25 @@ function renderGapInspector(n){
     h+=`<div class="searched"><b>searched:</b> ${esc(g.searched_locations.join(" · "))}</div>`;
   h+=`</div></div>`;
   if(g.affects&&g.affects.length){
-    h+=`<div class="sec"><div class="sh">Affects <span class="n">${g.affects.length} routes</span></div>
-      <div style="font-size:12px;color:var(--ink-dim);line-height:1.5">This missing link breaks the provenance chain for ${g.affects.length} result${g.affects.length>1?"s":""} — those routes cannot be fully drawn from the paper alone.</div></div>`;
+    // `affects` entries are a mix of node ids and provenance-route ids (see
+    // graph-contract) -- label each kind correctly instead of calling every
+    // reference a "route".
+    const nodeAffects=g.affects.filter(a=>RN[a]);
+    const routeAffects=g.affects.filter(a=>routesById[a]);
+    const unknown=g.affects.filter(a=>!RN[a]&&!routesById[a]);
+    h+=`<div class="sec"><div class="sh">Affects <span class="n">${g.affects.length}</span></div>`;
+    if(nodeAffects.length){
+      h+=`<div style="font-size:11px;color:var(--ink-faint);margin-bottom:4px">${nodeAffects.length} node${nodeAffects.length>1?"s":""}</div>
+        <div class="pill-row">`+nodeAffects.map(id=>`<span class="p" data-node="${esc(id)}">${esc(RN[id].label||id)}</span>`).join("")+`</div>`;
+    }
+    if(routeAffects.length){
+      h+=`<div style="font-size:11px;color:var(--ink-faint);margin:${nodeAffects.length?"10px":"0"} 0 4px">${routeAffects.length} provenance route${routeAffects.length>1?"s":""}</div>
+        <div style="font-size:12px;color:var(--ink-dim);line-height:1.5">This missing link breaks ${routeAffects.length===1?"a":"the"} provenance chain for ${routeAffects.length} route${routeAffects.length>1?"s":""} — ${routeAffects.length>1?"those":"that"} route${routeAffects.length>1?"s":""} cannot be fully drawn from the paper alone.</div>`;
+    }
+    if(unknown.length){
+      h+=`<div style="font-size:11px;color:var(--ink-faint);margin-top:6px">${unknown.length} unresolved reference${unknown.length>1?"s":""}: ${unknown.map(a=>esc(a)).join(", ")}</div>`;
+    }
+    h+=`</div>`;
   }
   body.innerHTML=h; wireInspector(body);
 }

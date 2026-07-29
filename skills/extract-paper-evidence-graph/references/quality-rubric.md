@@ -289,6 +289,33 @@ The graph is ready for a generic Viewer when:
 
 Do not alter semantics merely to simplify layout.
 
+### Zero-degree audit (required before finalization)
+
+Before writing `extraction-report.md`, list every ordinary (non-Gap) node and
+check it against every edge's `from`/`to`. A node with zero edges is an
+accidental island unless one of the following applies, and the report must
+say which:
+
+- **Add the grounded edge.** If the paper's own text supports a `feeds`/
+  `configures`/`produces`/etc. relation to some Procedure or Result the node
+  is genuinely part of, add that edge with its own evidence — do not leave
+  the node unconnected just because no earlier pass drew it in.
+- **Group-only structural contribution.** If the node is a real structural
+  contribution but has no operational input/output relation to any
+  Procedure or Result (e.g. a purely theoretical derivation, a proof, a
+  framework name with no traceable data flow), do not fabricate an edge to
+  give it a producer or consumer it doesn't have. Represent it instead as a
+  member of a `contribution_group` (its own group if no existing group fits)
+  and record in the report *why* no edge applies.
+- **Remove it.** If neither of the above holds — the node adds nothing
+  reachable from any route or group — delete it rather than ship a floating
+  node with no explanation.
+
+A zero-degree node with no group membership and no stated reason is always a
+defect, never a stylistic choice. Gap nodes are exempt from this specific
+check (their connectivity is covered separately: a Gap must have either a
+two-ended `between` or a non-empty `affects`, per the Gap Quality section).
+
 ## 10. Failure Modes and Corrective Actions
 
 | Failure | Typical rationalization | Required correction |
@@ -344,7 +371,10 @@ Do not alter semantics merely to simplify layout.
 - provenance routes;
 - routes beginning at root sources and routes with source limitations;
 - contribution groups;
-- Gaps by category.
+- Gaps by category;
+- zero-degree audit result: every ordinary node accounted for as
+  grounded-edge, group-only-structural (name the group), or removed — list
+  any group-only nodes and the one-line reason no edge applies.
 
 ### Review
 

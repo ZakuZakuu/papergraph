@@ -144,3 +144,46 @@ def test_claim_fields_nested_in_details(graph, coverage, source):
     claim = next(n for n in graph["nodes"] if n["kind"] == "claim")
     claim["details"] = {"claim_form": claim["claim_form"]}
     assert "kind_field_in_details" in codes(graph, coverage, source)
+
+
+# --- negative: privacy & mechanical grounding (P7 repeatability findings) -----
+
+
+def test_private_source_path_rejected(graph, coverage, source):
+    graph["paper"]["source_path"] = "/home/alice/papers/main.pdf"
+    assert "private_source_path" in codes(graph, coverage, source)
+
+
+def test_windows_source_path_rejected(graph, coverage, source):
+    graph["paper"]["source_path"] = "C:\\Users\\alice\\paper.pdf"
+    assert "private_source_path" in codes(graph, coverage, source)
+
+
+def test_relative_source_path_is_clean(graph, coverage, source):
+    graph["paper"]["source_path"] = "input/main.pdf"
+    assert "private_source_path" not in codes(graph, coverage, source)
+
+
+def test_measurement_raw_text_not_in_quote(graph, coverage, source):
+    # raw_text no longer matches the value printed in its own evidence quote
+    # (the exact class of silent-truncation bug the P7 findings caught: a
+    # paired value like "15/16" quietly recorded as just "15").
+    node = next(n for n in graph["nodes"] if n["kind"] == "result" and n.get("measurements"))
+    node["measurements"][0]["raw_text"] = "999.9 -- not printed anywhere"
+    assert "measurement_raw_text_not_in_quote" in codes(graph, coverage, source)
+
+
+def test_locator_quote_number_mismatch(graph, coverage, source):
+    ev = graph["evidence_spans"][0]
+    ev["locator"] = "Table 1"
+    ev["quote"] = "As shown in Table 2, " + ev["quote"]
+    # source=None: this check is graph-internal (locator/quote fields only),
+    # and mutating the quote here would otherwise also trip quote_mismatch
+    # against the real source text, which is a different, unrelated check.
+    assert "locator_quote_number_mismatch" in codes(graph, coverage)
+
+
+def test_locator_without_number_is_clean(graph, coverage, source):
+    ev = graph["evidence_spans"][0]
+    ev["locator"] = "Method"
+    assert "locator_quote_number_mismatch" not in codes(graph, coverage, source)

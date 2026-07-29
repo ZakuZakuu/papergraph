@@ -18,7 +18,7 @@ class LintIssue:
     code: str
     path: str
     message: str
-    layer: str = "structural"  # "schema" | "reference" | "structural" | "coverage"
+    layer: str = "structural"  # "schema" | "reference" | "structural" | "coverage" | "privacy"
 
     def to_dict(self) -> dict[str, str]:
         return {"code": self.code, "path": self.path, "message": self.message, "layer": self.layer}

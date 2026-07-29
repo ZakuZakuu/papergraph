@@ -47,6 +47,12 @@ Required `paper` fields:
 }
 ```
 
+`source_path` must be relative, redacted, or a basename — never a private
+absolute filesystem path (`/home/alice/...`, `C:\Users\alice\...`,
+`\\host\share\...`). The graph is meant to be shared; a real user's home
+directory or username in `source_path` leaks into every copy of it. `papergraph
+validate` rejects an absolute path here (`private_source_path`).
+
 Allowed `source_type` values:
 
 - `normalized_json`
@@ -303,6 +309,16 @@ Keep uncertainty when printed:
 
 Never silently convert an unknown unit into percent. Preserve raw text when
 numeric parsing is uncertain.
+
+Preserve the complete printed value token in `raw_text`, not just its primary
+numeric part. A paired/ratio value like `15/16` must stay `15/16`, not become
+`15` (drop the denominator and you silently change what was measured). An
+uncertainty term printed inline must still go in `uncertainty`, but do not
+truncate `raw_text` to omit it if the paper prints them together, e.g. keep
+`raw_text: "15.2 +/- 2.0%"` alongside `uncertainty.raw_text: "2.0%"`. If in
+doubt, `raw_text` should be exactly the substring you would highlight in the
+PDF for this value -- `papergraph validate` mechanically checks that it
+occurs in the measurement's own evidence quote.
 
 ## 5. Edges
 

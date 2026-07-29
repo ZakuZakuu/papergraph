@@ -658,6 +658,16 @@ Use the smallest span that preserves meaning:
 - table row plus exact headers for a measurement;
 - caption plus paragraph when a figure needs interpretation.
 
+A whole-page span is not an acceptable substitute for these when a finer unit
+can be built from the source. Whole-page spans hide exactly the failures this
+section exists to prevent: they make it impossible to mechanically check that
+a measurement's `raw_text` actually occurs in its cited evidence, and they
+make a `Table N`/`Figure N` locator's cited quote impossible to tell apart
+from quotes belonging to a different table or figure on the same page. Only
+fall back to a page-level span when the source has no finer extractable
+structure at all (e.g. a scanned page with no text layer) — and say so in
+`extraction-report.md`'s source-limitations note when you do.
+
 ### Role separation
 
 Distinguish:
