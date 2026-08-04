@@ -173,6 +173,83 @@ def test_measurement_raw_text_not_in_quote(graph, coverage, source):
     assert "measurement_raw_text_not_in_quote" in codes(graph, coverage, source)
 
 
+def test_measurement_raw_text_cannot_be_assembled_across_quotes(graph, coverage):
+    node = next(n for n in graph["nodes"] if n["kind"] == "result" and n.get("measurements"))
+    measurement = node["measurements"][0]
+    measurement["raw_text"] = "1.8 · 10^20"
+    measurement["numeric_value"] = 1.8e20
+    measurement["evidence_ids"] = ["ev_p1_s01", "ev_p1_s02"]
+    evidence_a = next(ev for ev in graph["evidence_spans"] if ev["id"] == "ev_p1_s01")
+    evidence_b = next(ev for ev in graph["evidence_spans"] if ev["id"] == "ev_p1_s02")
+    evidence_a["quote"] = "Reported training cost: 1.8 ·"
+    evidence_b["quote"] = "10^20 FLOPs"
+    assert "measurement_raw_text_not_in_quote" in codes(graph, coverage)
+
+
+def test_incomplete_scientific_notation_rejected(graph, coverage):
+    node = next(n for n in graph["nodes"] if n["kind"] == "result" and n.get("measurements"))
+    measurement = node["measurements"][0]
+    measurement["raw_text"] = "1.8 · 10"
+    measurement["numeric_value"] = 1.8e19
+    evidence_id = measurement["evidence_ids"][-1]
+    evidence = next(ev for ev in graph["evidence_spans"] if ev["id"] == evidence_id)
+    evidence["quote"] = "Reported training cost: 1.8 · 10 FLOPs"
+    assert "measurement_incomplete_scientific_notation" in codes(graph, coverage)
+
+
+def test_incomplete_scientific_notation_can_remain_unparsed(graph, coverage):
+    node = next(n for n in graph["nodes"] if n["kind"] == "result" and n.get("measurements"))
+    measurement = node["measurements"][0]
+    measurement["raw_text"] = "1.8 · 10"
+    measurement["numeric_value"] = None
+    evidence_id = measurement["evidence_ids"][-1]
+    evidence = next(ev for ev in graph["evidence_spans"] if ev["id"] == evidence_id)
+    evidence["quote"] = "Reported training cost: 1.8 · 10 FLOPs"
+    assert "measurement_incomplete_scientific_notation" not in codes(graph, coverage)
+
+
+def test_complete_scientific_notation_must_match_numeric_value(graph, coverage):
+    node = next(n for n in graph["nodes"] if n["kind"] == "result" and n.get("measurements"))
+    measurement = node["measurements"][0]
+    measurement["raw_text"] = "1.8 · 10^20"
+    measurement["numeric_value"] = 1.8e19
+    evidence_id = measurement["evidence_ids"][-1]
+    evidence = next(ev for ev in graph["evidence_spans"] if ev["id"] == evidence_id)
+    evidence["quote"] = "Reported training cost: 1.8 · 10^20 FLOPs"
+    assert "measurement_numeric_value_mismatch" in codes(graph, coverage)
+
+
+def test_complete_scientific_notation_with_matching_value_is_clean(graph, coverage):
+    node = next(n for n in graph["nodes"] if n["kind"] == "result" and n.get("measurements"))
+    measurement = node["measurements"][0]
+    measurement["raw_text"] = "1.8 · 10^20"
+    measurement["numeric_value"] = 1.8e20
+    evidence_id = measurement["evidence_ids"][-1]
+    evidence = next(ev for ev in graph["evidence_spans"] if ev["id"] == evidence_id)
+    evidence["quote"] = "Reported training cost: 1.8 · 10^20 FLOPs"
+    result = codes(graph, coverage)
+    assert "measurement_incomplete_scientific_notation" not in result
+    assert "measurement_numeric_value_mismatch" not in result
+
+
+@pytest.mark.parametrize("raw_text", ["1.8e20", "1.8 × 10²⁰", "1.8 · 1020"])
+def test_supported_scientific_notation_forms_are_checked(graph, coverage, raw_text):
+    node = next(n for n in graph["nodes"] if n["kind"] == "result" and n.get("measurements"))
+    measurement = node["measurements"][0]
+    measurement["raw_text"] = raw_text
+    measurement["numeric_value"] = 1.8e20
+    evidence_id = measurement["evidence_ids"][-1]
+    evidence = next(ev for ev in graph["evidence_spans"] if ev["id"] == evidence_id)
+    evidence["quote"] = f"Reported training cost: {raw_text} FLOPs"
+    assert "measurement_numeric_value_mismatch" not in codes(graph, coverage)
+
+
+def test_plain_scalar_must_match_numeric_value(graph, coverage, source):
+    node = next(n for n in graph["nodes"] if n["kind"] == "result" and n.get("measurements"))
+    node["measurements"][0]["numeric_value"] = 71.3
+    assert "measurement_numeric_value_mismatch" in codes(graph, coverage, source)
+
+
 def test_locator_quote_number_mismatch(graph, coverage, source):
     ev = graph["evidence_spans"][0]
     ev["locator"] = "Table 1"

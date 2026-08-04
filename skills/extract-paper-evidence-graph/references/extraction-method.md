@@ -219,6 +219,20 @@ Scan all frozen result regions and capture:
 - unavailable cells;
 - exact evidence.
 
+### Numeric-token integrity
+
+Treat each printed measurement token as atomic. In particular, a scientific
+notation value is not complete until its exponent is present in the same
+measurement `raw_text` and cited evidence. Do not join a mantissa to a nearby
+superscript, a following line, or another table cell. Do not reuse an orphaned
+numeric fragment for more than one value.
+
+When layout extraction leaves only an incomplete token such as `1.8 · 10`,
+preserve the token but set `numeric_value: null` and add a localized source
+layout limitation. A directly stated qualitative Claim may remain, but do not
+present that incomplete token as a calculated focal-versus-comparator proof.
+See `examples.md` for the table-layout failure pattern.
+
 Do not ask how the Result was produced yet.
 
 ### Inventory B: Structure

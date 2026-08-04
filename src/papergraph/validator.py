@@ -12,6 +12,7 @@ concerns.
 """
 from __future__ import annotations
 
+from decimal import Decimal, InvalidOperation
 import re
 from typing import Any
 
@@ -228,6 +229,80 @@ def _check_source_path_privacy(view: GraphView, c: IssueCollector) -> None:
 # --- measurement raw_text grounding --------------------------------------------
 
 
+_INCOMPLETE_SCI_NOTATION_RE = re.compile(
+    r"^[+-]?(?:\d+(?:\.\d*)?|\.\d+)\s*[·×x]\s*10$"
+)
+_SCIENTIFIC_NOTATION_RE = re.compile(
+    r"^(?P<mantissa>[+-]?(?:\d+(?:\.\d*)?|\.\d+))(?:\s*[·×x]\s*10(?:\^(?P<caret>[+-]?\d+)|(?P<compact>[+-]?\d+))|[eE](?P<e>[+-]?\d+))$"
+)
+_SCALAR_RE = re.compile(r"^[+-]?(?:\d+(?:\.\d*)?|\.\d+)$")
+_SUPERSCRIPT_TRANSLATION = str.maketrans("⁰¹²³⁴⁵⁶⁷⁸⁹⁻", "0123456789-")
+
+
+def _parse_deterministic_numeric(raw_text: str) -> Decimal | None:
+    """Parse only scalar forms whose numeric value is self-contained."""
+    value = raw_text.strip().translate(_SUPERSCRIPT_TRANSLATION)
+    if _SCALAR_RE.fullmatch(value):
+        try:
+            return Decimal(value)
+        except InvalidOperation:
+            return None
+
+    match = _SCIENTIFIC_NOTATION_RE.fullmatch(value)
+    if match is None:
+        return None
+    try:
+        exponent = match.group("caret") or match.group("compact") or match.group("e")
+        return Decimal(match.group("mantissa")) * (Decimal(10) ** int(exponent))
+    except (InvalidOperation, ValueError):
+        return None
+
+
+def _check_measurement_numeric_values(view: GraphView, c: IssueCollector) -> None:
+    """Reject numeric values unsupported by their own complete value token.
+
+    This intentionally skips ratios, formulas, and other contextual formats.
+    A detached exponent may not be borrowed from a neighboring table row or
+    source span.
+    """
+    for i, node in enumerate(view.nodes):
+        if node.get("kind") != "result":
+            continue
+        for m, meas in enumerate(_as_list(node.get("measurements"))):
+            meas = _as_dict(meas)
+            raw_text = meas.get("raw_text")
+            numeric_value = meas.get("numeric_value")
+            where = f"nodes[{i}].measurements[{m}]"
+            if not isinstance(raw_text, str) or numeric_value is None:
+                continue
+
+            normalized = raw_text.strip().translate(_SUPERSCRIPT_TRANSLATION)
+            if _INCOMPLETE_SCI_NOTATION_RE.fullmatch(normalized):
+                c.add(
+                    "measurement_incomplete_scientific_notation",
+                    f"{where}.numeric_value",
+                    f"raw_text {raw_text!r} ends at 10 without an exponent; "
+                    "leave numeric_value null instead of borrowing a nearby fragment",
+                    layer="structural",
+                )
+                continue
+
+            expected = _parse_deterministic_numeric(raw_text)
+            if expected is None or isinstance(numeric_value, bool):
+                continue
+            try:
+                actual = Decimal(str(numeric_value))
+            except InvalidOperation:
+                continue
+            if actual != expected:
+                c.add(
+                    "measurement_numeric_value_mismatch",
+                    f"{where}.numeric_value",
+                    f"numeric_value {numeric_value!r} disagrees with raw_text {raw_text!r}",
+                    layer="structural",
+                )
+
+
 def _check_measurement_raw_text_grounded(view: GraphView, c: IssueCollector) -> None:
     """Every reported ``raw_text`` (the literal printed token, e.g. ``15/16`` or
     ``15.2 +/- 2.0%``) must occur verbatim in at least one evidence quote the
@@ -251,9 +326,9 @@ def _check_measurement_raw_text_grounded(view: GraphView, c: IssueCollector) -> 
             ]
             if not quotes:
                 continue
-            if raw_text not in " ".join(quotes):
+            if not any(raw_text in quote for quote in quotes):
                 c.add("measurement_raw_text_not_in_quote", f"nodes[{i}].measurements[{m}].raw_text",
-                      f"measurement raw_text {raw_text!r} does not occur in its evidence quote(s)",
+                      f"measurement raw_text {raw_text!r} does not occur in any one of its evidence quotes",
                       layer="structural")
 
 
@@ -528,6 +603,7 @@ def validate(graph: Any, coverage: Any = None, source: Source | None = None) -> 
     _check_node_reserved_fields(view, c)
     _check_source_path_privacy(view, c)
     _check_measurement_raw_text_grounded(view, c)
+    _check_measurement_numeric_values(view, c)
     _check_locator_quote_number_match(view, c)
     _check_measurement_ownership(view, c)
     _check_routes(view, c)

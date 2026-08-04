@@ -109,6 +109,43 @@ Why: it loses conditions, comparators, exact values, and distinct evaluators.
 Also incorrect: twelve Result nodes, one for each cell. The row is the
 experimental unit; cells are Measurements.
 
+## 2.1 Table Layout Trap: Detached Scientific Exponents
+
+Suppose an authoritative text extraction contains these spans:
+
+```text
+row-a: "Method A ... 1.8 · 10"
+orphan: "19"
+row-b: "Method B ... 7.7 · 10"
+```
+
+The detached `19` is not safely attributable to either row. Do **not** infer
+`1.8e19` for Method A and `7.7e19` for Method B, even if one happens to match
+the PDF visually. A fragment must never be borrowed from a neighboring row or
+reused for two cells.
+
+Until the authoritative source supplies a complete cell-level token, retain the
+literal text and leave the numeric interpretation empty:
+
+```json
+{
+  "id": "res_method_a__training_cost",
+  "metric": "training cost",
+  "raw_text": "1.8 · 10",
+  "numeric_value": null,
+  "unit": "FLOPs",
+  "qualifier": "EN-DE",
+  "availability": "reported",
+  "evidence_ids": ["ev_table_row_a"]
+}
+```
+
+If a single cited span instead contains `1.8 × 10^20`, use
+`numeric_value: 1.8e20`. For a comparative Claim, only show a numeric
+comparison when both the focal and comparator tokens are complete and their
+metric and qualifier are compatible. A paper's direct qualitative statement can
+still be represented, with the unresolved numeric limitation visible.
+
 ## 3. Explicit and Reconstructed Relations
 
 The Methods sentence directly states that Fusion emits anomaly labels:

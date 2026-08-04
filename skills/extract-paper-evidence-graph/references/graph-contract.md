@@ -320,6 +320,17 @@ doubt, `raw_text` should be exactly the substring you would highlight in the
 PDF for this value -- `papergraph validate` mechanically checks that it
 occurs in the measurement's own evidence quote.
 
+Scientific notation is one indivisible value token. Set `numeric_value` only
+when the mantissa and exponent appear together in this Measurement's own
+`raw_text` and cited evidence, for example `1.8 × 10^20` or a source-preserved
+compact form such as `1.8 · 1020`. Never recover an exponent from a neighboring
+row, column, or detached layout fragment; never assign one detached exponent to
+two cells. If the authoritative source only exposes `1.8 · 10`, preserve that
+literal `raw_text`, set `numeric_value: null`, and record the localized source
+layout limitation. `papergraph validate` rejects a non-null numeric value for
+an incomplete scientific-notation token and checks deterministic scalar values
+against their printed token.
+
 ## 5. Edges
 
 Every edge is evidence-bearing:
