@@ -12,6 +12,28 @@ reported results, reconstruct defensible multi-span connections, and expose
 unresolved links as localized gaps. Do not optimize for a graph that merely
 looks complete.
 
+## Required CLI Gate
+
+Before reading the paper or writing any extraction artifact, establish a
+compatible `papergraph` CLI. A configured development environment may use its
+known matching `papergraph` command or an already-provided workspace bundle.
+Otherwise, download the pinned zero-install release bundle:
+
+```sh
+if [ ! -f .papergraph/papergraph-v0.1.3.pyz ]; then
+  mkdir -p .papergraph
+  curl -fsSL https://github.com/ZakuZakuu/papergraph/releases/download/v0.1.3/papergraph.pyz \
+    -o .papergraph/papergraph-v0.1.3.pyz
+fi
+python3 .papergraph/papergraph-v0.1.3.pyz --help
+```
+
+Use the working command established here for final validation and, when
+requested, viewer generation. If neither a matching configured command nor the
+pinned bundle can run, stop before writing `coverage-plan.json`, `graph.json`,
+or `extraction-report.md`. Report `papergraph CLI unavailable` with the failed
+command and its output; do not claim the extraction is complete.
+
 ## Required References
 
 Read these before extraction:
@@ -58,6 +80,14 @@ workspace. Do not substitute prose for these files.
 ## Non-Negotiable Invariants
 
 - Evidence quotes are localized and attributable to the authoritative paper.
+- A quote is a literal substring of its cited span sequence after only
+  whitespace and layout-hyphen normalization. Do not use `...` to skip text,
+  omit parentheticals or citations, or reorder table columns. Split nonlocal
+  evidence into separate spans instead.
+- For a headline Claim or support edge, retain the shortest self-contained
+  proposition that explains its role. A bare keyword such as a model name is
+  not useful evidence; fix the cited spans or split the evidence rather than
+  shortening a failed quote to a token.
 - Every tabular result region freezes its exact row/condition labels and
   reconciles their count before graph construction; a count without labels is
   not a coverage plan.
@@ -126,6 +156,19 @@ Before creating graph nodes, write `coverage-plan.json`. Include:
 Set `frozen_before_graph: true`. The plan is an attention contract, not an
 answer key. Do not revise it to match the completed graph; record later
 discoveries separately.
+
+For a table with blank leading cells, enumerate every physical body row before
+counting. Carry forward the visible group/column label into each later row; a
+two-by-two variation block is four Result units even when its last rows print
+only changed numeric values. Never infer a table's row count from the number
+of distinct visible prefixes.
+
+Use `references/coverage-plan-template.json` as the exact structural shape.
+Replace every example value, but do not add planning-only fields such as
+`location`, `obligation_id`, `decision`, `decision_intent`, or `reason`:
+`coverage-plan.json` rejects unrecognized fields. For an excluded non-result
+region, use `expected_unit_count: null`, `unit_labels: []`, and
+`count_matches_unit_labels: false`.
 
 ### 3. Build Independent Inventories
 
@@ -198,6 +241,16 @@ Write `graph.json` exactly as specified by the graph contract. Write
 - self-review corrections;
 - whether the extraction stopped cleanly.
 
+Run the CLI command established by the required gate:
+
+```sh
+<papergraph-command> validate --graph graph.json --coverage coverage-plan.json --source <authoritative-source>
+```
+
+A zero exit status is required before reporting completion. Apply one bounded
+correction pass for validation findings. If validation still fails, stop and
+report the errors rather than describing the extraction as complete.
+
 ## Stop Conditions
 
 Finish when:
@@ -214,27 +267,19 @@ Finish when:
 - every empirical headline Claim has result support or a Gap;
 - every frozen headline obligation has a recorded disposition;
 - no relation is stronger than its evidence;
+- final CLI validation exits with status zero;
 - the review budget is exhausted or no material defect remains.
 
 Stop and report the limitation instead of fabricating content when the source
 is unreadable, incomplete, or lacks stable access to a required result region.
 
-## Visualizing the graph (papergraph CLI)
+## Build the Viewer When Requested
 
-After producing `graph.json` and `coverage-plan.json`:
+Only after final validation succeeds:
 
-1. Install the validator/viewer (either):
-   - pip: `pip install papergraph`
-   - zero-install: download `papergraph.pyz` from the GitHub Release, then
-     `python3 papergraph.pyz ...`
-2. Validate (structure only — passing is not a judgement of content
-   correctness):
-   ```
-   papergraph validate --graph graph.json --coverage coverage-plan.json --source paper.json
-   ```
-3. Build the self-contained viewer:
-   ```
-   papergraph build --graph graph.json --coverage coverage-plan.json --source paper.json --out ./viewer-out
-   ```
-   Open `./viewer-out/index.standalone.html` in a browser — no server, no
-   Python needed to view it.
+```sh
+<papergraph-command> build --graph graph.json --coverage coverage-plan.json --source <authoritative-source> --out ./viewer-out
+```
+
+Open `./viewer-out/index.standalone.html` in a browser. No server or Python is
+needed to view the standalone HTML file.

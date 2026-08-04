@@ -1,0 +1,45 @@
+{
+  "format_version": "paper-evidence-coverage/0.1",
+  "paper_id": "paper-local-id",
+  "frozen_before_graph": true,
+  "headline_locations": [
+    {
+      "locator": "Abstract",
+      "source_span_ids": ["p1-s1"]
+    }
+  ],
+  "headline_obligations": [
+    {
+      "id": "headline_primary_claim",
+      "source_span_ids": ["p1-s1"],
+      "statement": "Replace with one salient paper statement.",
+      "required_disposition": "headline_scan entry"
+    }
+  ],
+  "result_regions": [
+    {
+      "locator": "Table 1",
+      "source_span_ids": ["p2-s1"],
+      "expected_unit_count": 1,
+      "unit_labels": ["Condition A"],
+      "count_matches_unit_labels": true,
+      "must_capture": ["reported metric"],
+      "derived_regions": []
+    },
+    {
+      "locator": "Figure 1",
+      "source_span_ids": ["p3-s1"],
+      "expected_unit_count": null,
+      "unit_labels": [],
+      "count_matches_unit_labels": false,
+      "must_capture": [],
+      "derived_regions": []
+    }
+  ],
+  "condition_label_audit": [],
+  "structure_candidates": [],
+  "configuration_families": [],
+  "route_obligations": [],
+  "ambiguity_probes": [],
+  "later_discoveries": []
+}

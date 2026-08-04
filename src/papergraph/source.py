@@ -19,12 +19,16 @@ from typing import Any
 
 _LINEBREAK_HYPHEN = re.compile(r"([A-Za-z])-\n[ \t]*([a-z])")
 _WS_RUN = re.compile(r"\s+")
+_WS_BEFORE_CLOSER = re.compile(r"\s+([\)\]\},.;:])")
+_TRAILING_HYPHEN = re.compile(r"[A-Za-z]-\s*$")
+_LEADING_LOWER = re.compile(r"^\s*[a-z]")
 
 
 def normalize_display(raw: str) -> str:
     """Layout-normalize display text: heal line-break hyphenation, collapse whitespace."""
     joined = _LINEBREAK_HYPHEN.sub(r"\1\2", raw)
-    return _WS_RUN.sub(" ", joined).strip()
+    collapsed = _WS_RUN.sub(" ", joined).strip()
+    return _WS_BEFORE_CLOSER.sub(r"\1", collapsed)
 
 
 class Source:
@@ -72,6 +76,18 @@ class Source:
             return False
         if any(not self.has_span(s) for s in source_span_ids):
             return False
-        haystack = normalize_display(" ".join(self.span_text(s) for s in source_span_ids))
+        # A cited sequence often crosses a physical line boundary. Preserve a
+        # printed trailing hyphen but remove only the boundary whitespace; this
+        # never adds/removes words or permits reordering cited spans.
+        haystack_raw = ""
+        for span_id in source_span_ids:
+            text = self.span_text(span_id)
+            if not haystack_raw:
+                haystack_raw = text
+            elif _TRAILING_HYPHEN.search(haystack_raw) and _LEADING_LOWER.match(text):
+                haystack_raw = haystack_raw.rstrip() + text.lstrip()
+            else:
+                haystack_raw = f"{haystack_raw} {text}"
+        haystack = normalize_display(haystack_raw)
         needle = normalize_display(quote)
         return bool(needle) and needle in haystack
