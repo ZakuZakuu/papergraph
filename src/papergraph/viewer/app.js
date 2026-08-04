@@ -278,9 +278,12 @@ function claimChainElems(claimId){
 }
 function buildClaimChain(claimId){
   const nd=new Set([claimId]), eg=new Set();
-  const resultIds=new Set(),gapIds=new Set();
+  const resultIds=new Set(),comparisonResultIds=new Set(),gapIds=new Set();
   exactEdges.filter(e=>!e.gap && e.b===claimId && e.rel==="supports").forEach(e=>{
     eg.add(e.id); nd.add(e.a);resultIds.add(e.a);
+    (e.ref.comparison_result_ids||[]).forEach(id=>{
+      if(RN[id])comparisonResultIds.add(id);
+    });
     const rts=routesByResult[e.a];
     if(rts) rts.forEach(r=>{ const re=routeElems(r); re.nd.forEach(id=>nd.add(id)); re.eg.forEach(id=>eg.add(id)); });
   });
@@ -294,7 +297,10 @@ function buildClaimChain(claimId){
   resultIds.forEach(id=>{
     const groupId=compactProjection.groupByMemberId[id];if(groupId)aggregateIds.add(groupId);
   });
-  return {claimId,nodeIds:nd,edgeIds:eg,resultIds,gapIds,aggregateIds};
+  comparisonResultIds.forEach(id=>{
+    const groupId=compactProjection.groupByMemberId[id];if(groupId)aggregateIds.add(groupId);
+  });
+  return {claimId,nodeIds:nd,edgeIds:eg,resultIds,comparisonResultIds,gapIds,aggregateIds};
 }
 
 /* ---------- layout: deterministic evidence flow + bounded cooling relaxation ----------
@@ -668,7 +674,7 @@ function visibleEdge(e){
 function computeHighlight(){
   if(activeRoute){ hi=routeElems(activeRoute); return; }
   if(activeClaimId&&claimChain){
-    hi={nd:claimChain.nodeIds,eg:claimChain.edgeIds};
+    hi={nd:new Set([...claimChain.nodeIds,...claimChain.comparisonResultIds]),eg:claimChain.edgeIds};
     return;
   }
   if(selNode){
@@ -923,7 +929,7 @@ cv.addEventListener("wheel",ev=>{ ev.preventDefault();
 function selectNode(n){
   if(n.virtualType==="result_group"){ toggleResultGroup(n); return; }
   if(!n.gap&&n.kind==="claim"){enterClaimBrowsing(n.id);return;}
-  if(activeClaimId&&claimChain&&claimChain.nodeIds.has(n.id)){selectDetailNode(n);return;}
+  if(activeClaimId&&claimChain&&(claimChain.nodeIds.has(n.id)||claimChain.comparisonResultIds.has(n.id))){selectDetailNode(n);return;}
   if(activeClaimId){
     const groupId=compactProjection.groupByMemberId[n.id];
     if(viewMode==="compact"&&groupId)manualExpandedResultGroups.add(groupId);
@@ -967,10 +973,12 @@ function enterClaimBrowsing(claimId){
   activeClaimId=claimId;claimChain=buildClaimChain(claimId);
   claimExpandedResultGroups.clear();
   exactEdges.filter(e=>!e.gap&&e.b===claimId&&e.rel==="supports").forEach(e=>{
-    const groupId=compactProjection.groupByMemberId[e.a];
-    if(viewMode==="compact"&&groupId){
-      claimExpandedResultGroups.add(groupId);placeResultGroupChildren(RN[groupId]);
-    }
+    [e.a,...(e.ref.comparison_result_ids||[])].forEach(resultId=>{
+      const groupId=compactProjection.groupByMemberId[resultId];
+      if(viewMode==="compact"&&groupId){
+        claimExpandedResultGroups.add(groupId);placeResultGroupChildren(RN[groupId]);
+      }
+    });
   });
   selNode=RN[claimId]||null;selEdge=null;activeRoute=null;detailSelection=null;
   closeDetailInspector();computeHighlight();renderClaimBrowser();syncOutlineUI();renderCrumb();
@@ -1070,6 +1078,53 @@ function closeDetailInspector(){
   document.getElementById("pg-root").classList.remove("detail-tab-active");
 }
 function esc(s){ return (s==null?"":String(s)).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c])); }
+const compactScientificNotation=/^([+-]?(?:\d+(?:\.\d*)?|\.\d+))\s*[·×x]\s*10([+-]?\d+)$/;
+function measurementText(m){ return m.raw_text!=null?String(m.raw_text):String(m.numeric_value??""); }
+function renderMeasurementValue(m){
+  const raw=measurementText(m),match=raw.trim().match(compactScientificNotation);
+  if(!match)return esc(raw);
+  // Keep the graph's literal PDF token intact while rendering its exponent legibly.
+  return `<span class="scientific-value" title="Source text: ${esc(raw)}">${esc(match[1])} × 10<sup>${esc(match[2])}</sup></span>`;
+}
+function measurementRecord(id){
+  for(const node of Object.values(RN)){
+    const measurement=measOf(node).find(item=>item.id===id);
+    if(measurement)return {node,measurement};
+  }
+  return null;
+}
+function renderDeclaredMeasurements(edge){
+  const measurements=(edge.ref.measurement_ids||[]).map(measurementRecord).filter(Boolean);
+  const comparatorIds=(edge.ref.comparison_result_ids||[]).filter(id=>RN[id]);
+  if(!measurements.length&&!comparatorIds.length)return "";
+  const isComparison=comparatorIds.length>0;
+  const measuredResultIds=new Set(measurements.map(item=>item.node.id));
+  let h=`<div class="declared-measurements${isComparison?" comparison":""}">`+
+    `<div class="declared-measurements-title">${isComparison?"Comparative evidence":"Declared measurements"}</div>`+
+    `<div class="declared-measurements-note">${isComparison
+      ?"Only measurements explicitly attached to this support edge are shown. The broader paper statement is listed separately."
+      :"Measurements explicitly attached to this support edge."}</div>`;
+  if(measurements.length){
+    h+=`<table class="meas declared-measurements-table"><thead><tr><th>Result</th><th>Metric</th><th>Value</th></tr></thead><tbody>`+
+      measurements.map(({node,measurement})=>`<tr><td><button type="button" class="measurement-result" data-node="${esc(node.id)}">${esc(node.label||node.id)}</button></td>`+
+        `<td>${esc(measurement.metric)}${measurement.qualifier?`<div class="measurement-qualifier">${esc(measurement.qualifier)}</div>`:""}</td>`+
+        `<td class="val">${renderMeasurementValue(measurement)}${measurement.unit?` <span class="u">${esc(measurement.unit)}</span>`:""}</td></tr>`).join("")+`</tbody></table>`;
+  }
+  const unmeasuredComparators=comparatorIds.filter(id=>!measuredResultIds.has(id));
+  if(unmeasuredComparators.length){
+    h+=`<div class="comparison-result-links"><span>Declared comparison result${unmeasuredComparators.length===1?"":"s"}:</span>`+
+      unmeasuredComparators.map(id=>`<button type="button" class="measurement-result" data-node="${esc(id)}">${esc(RN[id].label||id)}</button>`).join("")+`</div>`;
+  }
+  return h+`</div>`;
+}
+function renderClaimSupportItem(edge){
+  const src=RN[edge.a];
+  let h=`<div class="supitem"><div class="suphead"><span class="badge ${esc(edge.level)}">${esc(edge.level)}</span> from <b class="lnknode" data-node="${esc(edge.a)}">${esc(src?src.label:edge.a)}</b></div>`;
+  if(edge.ref.rationale)h+=`<div class="rationale">${esc(edge.ref.rationale)}</div>`;
+  h+=renderDeclaredMeasurements(edge);
+  h+=evBlock(edge.ref.evidence_ids,edge.level!=="explicit");
+  return h+`</div>`;
+}
 function evBlock(ids,recon){ ids=ids||[]; if(!ids.length)return "";
   return ids.map(id=>{ const e=evById[id]; if(!e)return "";
     return `<div class="ev${recon?" recon":""}"><div class="q"><span class="qm">“</span>${esc(e.quote)}<span class="qm">”</span></div>
@@ -1262,6 +1317,8 @@ function renderClaimBrowser(){
   }
   const sal=nd.salience_evidence_ids||[];
   if(sal.length)h+=`<section class="sec"><div class="sh">Stated in <span class="n">${sal.length}</span></div>${evBlock(sal)}</section>`;
+  if(supports.length)h+=`<section class="sec"><div class="sh">Measured support <span class="n">${supports.length}</span></div>`+
+    supports.map(renderClaimSupportItem).join("")+`</section>`;
   if(openGaps.length)h+=`<section class="sec"><div class="sh gap-heading">Open gaps <span class="n">${openGaps.length}</span></div>`+
     openGaps.map(gp=>`<button class="claim-gap" data-node="${esc(gp.id)}"><span>?</span><span>${esc(gp.question||gp.missing_content||"Missing evidence")}</span></button>`).join("")+`</section>`;
   body.innerHTML=h;wireInspector(body);
@@ -1293,23 +1350,22 @@ function renderClaimInspector(n,nd,head,body){
       h+=`<div class="sec"><div class="sh">Featured evidence</div><div class="pill-row">`+
         featuredResults.map(id=>`<span class="p" data-node="${esc(id)}">${esc(RN[id].label||id)}</span>`).join("")+`</div>`;
       if(featuredMeasurements.length)h+=`<table class="meas featured-measurements"><tbody>`+
-        featuredMeasurements.map(item=>`<tr><td>${esc(item.measurement.metric)}</td><td class="val">${esc(item.measurement.raw_text!=null?item.measurement.raw_text:item.measurement.numeric_value)}${item.measurement.unit?` <span class="u">${esc(item.measurement.unit)}</span>`:""}</td></tr>`).join("")+`</tbody></table>`;
+        featuredMeasurements.map(item=>`<tr><td>${esc(item.measurement.metric)}</td><td class="val">${renderMeasurementValue(item.measurement)}${item.measurement.unit?` <span class="u">${esc(item.measurement.unit)}</span>`:""}</td></tr>`).join("")+`</tbody></table>`;
       h+=`</div>`;
     }
   }
-  // Support: incoming supports-edges (result → claim), with their evidence + rationale
   const sup = exactEdges.filter(e=>!e.gap && e.b===n.id && e.rel==="supports");
   const clmGaps = gaps.filter(gp=>gp.category==="unsupported_claim" &&
     (gp.affects||[]).includes(n.id));
+  // Separate the paper's qualitative statement from measurements that may
+  // quantify only one facet of a broader Claim.
+  const sal = nd.salience_evidence_ids||[];
+  if(sal.length) h+=`<div class="sec"><div class="sh">Stated in (paper) <span class="n">${sal.length}</span></div>${evBlock(sal)}</div>`;
+  // Support: incoming supports-edges (result → claim), including the exact
+  // measurement and comparison references declared by each edge.
   if(sup.length){
-    h+=`<div class="sec"><div class="sh">Support <span class="n">${sup.length}</span></div>`;
-    sup.forEach(e=>{ const src=RN[e.a];
-      h+=`<div class="supitem"><div class="suphead"><span class="badge ${esc(e.level)}">${esc(e.level)}</span> from <b class="lnknode" data-node="${esc(e.a)}">${esc(src?src.label:e.a)}</b></div>`;
-      if(e.ref.rationale) h+=`<div class="rationale">${esc(e.ref.rationale)}</div>`;
-      h+= evBlock(e.ref.evidence_ids, e.level!=="explicit");
-      h+=`</div>`;
-    });
-    h+=`</div>`;
+    h+=`<div class="sec"><div class="sh">Measured support <span class="n">${sup.length}</span></div>`+
+      sup.map(renderClaimSupportItem).join("")+`</div>`;
   }
   if(clmGaps.length){
     clmGaps.forEach(gp=>{
@@ -1319,10 +1375,7 @@ function renderClaimInspector(n,nd,head,body){
         <div class="pill-row"><span class="p" data-node="${esc(gp.id)}">open gap ▸</span></div></div></div>`;
     });
   }
-  // Stated in — where the paper asserts the claim (salience evidence = the "source")
-  const sal = nd.salience_evidence_ids||[];
-  if(sal.length) h+=`<div class="sec"><div class="sh">Stated in (paper) <span class="n">${sal.length}</span></div>${evBlock(sal)}</div>`;
-  else if(!sup.length && !clmGaps.length) h+=`<div class="sec"><div style="color:var(--ink-faint);font-size:12px">No source evidence recorded for this claim.</div></div>`;
+  else if(!sal.length && !sup.length && !clmGaps.length) h+=`<div class="sec"><div style="color:var(--ink-faint);font-size:12px">No source evidence recorded for this claim.</div></div>`;
   // Connections
   const nb=[...(inspectorAdjacency()[n.id]||[])].filter(id=>RN[id]);
   if(nb.length){ h+=`<div class="sec"><div class="sh">Connections <span class="n">${nb.length}</span></div><div class="pill-row">`+
@@ -1363,7 +1416,7 @@ function renderDetailInspector(){
     h+=`<div class="sec"><div class="sh">Measurements <span class="n">${ms.length}</span></div>
       <table class="meas"><thead><tr><th>Metric</th><th>Value</th><th></th></tr></thead><tbody>`;
     ms.forEach(m=>{ h+=`<tr><td>${esc(m.metric)}${m.qualifier?`<div style="color:var(--ink-faint);font-size:10.5px;margin-top:2px">${esc(m.qualifier)}</div>`:""}</td>
-      <td class="val">${esc(m.raw_text!=null?m.raw_text:m.numeric_value)}${m.unit?` <span class="u">${esc(m.unit)}</span>`:""}${m.uncertainty?` <span class="u">±${esc(m.uncertainty)}</span>`:""}</td>
+      <td class="val">${renderMeasurementValue(m)}${m.unit?` <span class="u">${esc(m.unit)}</span>`:""}${m.uncertainty?` <span class="u">±${esc(m.uncertainty)}</span>`:""}</td>
       <td><span class="avail ${esc(m.availability)}">${esc(m.availability)}</span></td></tr>`; });
     h+=`</tbody></table></div>`;
   }

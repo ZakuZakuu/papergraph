@@ -324,6 +324,18 @@ table.meas tr:last-child td{border-bottom:none}
 .suphead .badge.reconstructed{background:rgba(139,127,214,.16);color:#b3a9ea}
 .lnknode{color:var(--ink);cursor:pointer;border-bottom:1px dotted var(--stroke2)}
 .lnknode:hover{color:var(--accent);border-color:var(--accent)}
+.declared-measurements{margin:10px 0 11px;padding:9px 10px;border-left:2px solid var(--stroke2);background:transparent}
+.declared-measurements.comparison{border-left-color:var(--accent)}
+.declared-measurements-title{display:table;padding:2px 6px;border:1px solid var(--accent-dim);border-radius:4px;
+  background:rgba(87,224,216,.09);font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--accent)}
+.declared-measurements-note{margin:4px 0 7px;font-size:10.5px;line-height:1.45;color:var(--ink-faint)}
+.declared-measurements-table{margin-top:2px}
+.measurement-result{appearance:none;padding:0;border:0;background:transparent;color:var(--accent);font:inherit;text-align:left;cursor:pointer}
+.measurement-result:hover{text-decoration:underline}
+.measurement-qualifier{margin-top:2px;font-size:10.5px;color:var(--ink-faint)}
+.comparison-result-links{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px;font-size:10.5px;color:var(--ink-faint);align-items:center}
+.scientific-value{font-variant-numeric:tabular-nums}
+.scientific-value sup{font-size:.72em;line-height:0;vertical-align:super}
 
 /* ---------- bottom bar ---------- */
 #pg-bot{position:absolute;left:0;right:0;bottom:0;height:44px;display:flex;align-items:center;

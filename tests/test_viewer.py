@@ -89,6 +89,11 @@ def test_current_claim_first_viewer_features_are_packaged(built: Path):
         "function applyEvidenceFlowLayout",
         "function buildFoldedProvenanceTree",
         "function renderClaimProvenanceTree",
+        "function renderDeclaredMeasurements",
+        "function renderClaimSupportItem",
+        "Comparative evidence",
+        "comparison_result_ids",
+        "comparisonResultIds",
     ):
         assert marker in app
     # Coincident nodes use an ID-stable nudge, not the missing legacy RNG helper.
