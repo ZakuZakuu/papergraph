@@ -71,6 +71,36 @@ def test_index_references_assets_and_manifest_data(built: Path):
     assert "__PAPERGRAPH_DATA__" in app  # inline-first, else fetch
 
 
+def test_current_claim_first_viewer_features_are_packaged(built: Path):
+    """Keep the recovered Compact viewer from silently regressing to legacy UI."""
+    index = (built / cli.VIEWER_INDEX_FILE).read_text(encoding="utf-8")
+    app = (built / cli.VIEWER_APP_FILE).read_text(encoding="utf-8")
+
+    for marker in (
+        'id="pg-mode-compact"',
+        'id="pg-mode-full"',
+        'id="pg-claim-browser"',
+        'id="pg-detail-inspector"',
+        'id="pg-layout-reset"',
+    ):
+        assert marker in index
+    for marker in (
+        "function buildCompactResultProjection",
+        "function applyEvidenceFlowLayout",
+        "function buildFoldedProvenanceTree",
+        "function renderClaimProvenanceTree",
+    ):
+        assert marker in app
+    # Coincident nodes use an ID-stable nudge, not the missing legacy RNG helper.
+    assert "rnd()" not in app
+
+
+def test_manifest_format_matches_the_rendered_graph(built: Path):
+    manifest = json.loads((built / cli.VIEWER_MANIFEST_FILE).read_text(encoding="utf-8"))
+    graph = json.loads((built / cli.VIEWER_DATA_DIR / cli.VIEWER_GRAPH_FILE).read_text(encoding="utf-8"))
+    assert manifest["format_version"] == graph["format_version"]
+
+
 # --- standalone: data inlined + no external resource references ---------------
 
 

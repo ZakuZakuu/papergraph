@@ -17,6 +17,10 @@
       <span class="sub">evidence-graph viewer</span>
     </div>
     <span class="paper" id="pg-paper"></span>
+    <div class="view-switch" role="group" aria-label="Graph view">
+      <button id="pg-mode-compact" class="active" type="button" aria-pressed="true">Compact</button>
+      <button id="pg-mode-full" type="button" aria-pressed="false">Full</button>
+    </div>
     <a class="icon-btn" id="pg-github" href="https://github.com/ZakuZakuu/papergraph" target="_blank" rel="noopener noreferrer" title="View on GitHub" aria-label="View on GitHub">
       <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
         <path d="M12 .5C5.73.5.75 5.48.75 11.75c0 5.02 3.26 9.28 7.78 10.78.57.1.78-.25.78-.55
@@ -36,6 +40,24 @@
   </div>
 
   <div id="pg-rail">
+    <section class="card paper-overview">
+      <h2>Paper</h2>
+      <div class="paper-summary" id="pg-paper-summary"></div>
+      <div class="reading-basis" id="pg-reading-basis"></div>
+      <div class="reading-stats" id="pg-reading-stats"></div>
+    </section>
+    <section class="card" id="pg-core-claims">
+      <h2>Core claims</h2>
+      <div class="reading-outline" id="pg-outline"></div>
+    </section>
+    <details class="card introduces" id="pg-introduces">
+      <summary>What the paper introduces</summary>
+      <div id="pg-structural"></div>
+    </details>
+    <section class="card questions-card">
+      <h2>Open questions</h2>
+      <div class="open-questions" id="pg-open-questions"></div>
+    </section>
     <div class="card">
       <input class="search" id="pg-search" placeholder="search nodes…" autocomplete="off" spellcheck="false">
     </div>
@@ -49,26 +71,47 @@
       </div>
       <div class="legend" id="pg-legend"></div>
     </div>
-    <div class="card">
-      <h2>Contribution groups</h2>
-      <div class="grp" id="pg-groups"></div>
-    </div>
-    <div class="card">
+    <div class="card full-only">
       <h2>Graph</h2>
       <div class="stats" id="pg-stats"></div>
     </div>
   </div>
+  <div id="pg-rail-resizer" role="separator" tabindex="0"
+    aria-label="Resize sidebar" aria-orientation="vertical"
+    aria-valuemin="320" aria-valuemax="600" aria-valuenow="410"></div>
 
-  <div id="pg-insp">
+  <div id="pg-claim-browser" class="detail-panel claim-panel">
     <div class="ihead">
-      <button class="iclose" id="pg-close" title="Close (Esc)">✕</button>
-      <div id="pg-ihead-inner"></div>
+      <button class="iclose" id="pg-claim-close" title="Close claim browser" aria-label="Close claim browser">✕</button>
+      <div id="pg-claim-head"></div>
     </div>
-    <div class="ibody" id="pg-ibody"></div>
+    <div class="ibody" id="pg-claim-body"></div>
+  </div>
+  <div id="pg-claim-resizer" role="separator" tabindex="0"
+    aria-label="Resize claim browser" aria-orientation="vertical"
+    aria-valuemin="300" aria-valuemax="520" aria-valuenow="372"></div>
+
+  <div id="pg-detail-inspector" class="detail-panel node-panel">
+    <div class="ihead">
+      <button class="iclose" id="pg-detail-close" title="Close inspector" aria-label="Close inspector">✕</button>
+      <div id="pg-detail-head"></div>
+    </div>
+    <div class="ibody" id="pg-detail-body"></div>
+  </div>
+  <div id="pg-detail-resizer" role="separator" tabindex="0"
+    aria-label="Resize node inspector" aria-orientation="vertical"
+    aria-valuemin="300" aria-valuemax="520" aria-valuenow="372"></div>
+  <div class="claim-detail-tabs" id="pg-mobile-tabs" aria-label="Inspector view">
+    <button type="button" id="pg-tab-claim" class="active">Claim</button>
+    <button type="button" id="pg-tab-detail">Node</button>
   </div>
 
   <div id="pg-bot">
     <div class="zoom">
+      <button id="pg-rail-toggle" type="button" title="Collapse sidebar"
+        aria-label="Collapse sidebar" aria-expanded="true"><span class="sidebar-glyph" aria-hidden="true"></span></button>
+      <button id="pg-layout-reset" type="button" title="Restore default layout"
+        aria-label="Restore default layout">&#8634;</button>
       <button id="pg-zin" title="Zoom in">+</button>
       <button id="pg-zout" title="Zoom out">−</button>
       <button id="pg-zfit" title="Fit / reset" style="width:auto;padding:0 8px;font-size:11px;font-family:var(--mono)">fit</button>
