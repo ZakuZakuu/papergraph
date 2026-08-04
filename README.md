@@ -63,6 +63,13 @@ See `ACKNOWLEDGEMENTS.md` for design-language and provenance notes, and
 `tests/fixtures/synthetic/LICENSE` for the test fixture's separate CC0-1.0
 dedication.
 
+## Documentation
+
+The current product behavior and long-lived project decisions live in
+[`docs/`](docs/README.md). Research runs and paper-specific demo artifacts are
+kept outside this repository under the workspace's `.scratch/papergraph/` tree;
+they are never an input to packaging or release builds.
+
 ## License
 
 Apache-2.0 — see `LICENSE`.
