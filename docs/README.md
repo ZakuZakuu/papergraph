@@ -8,6 +8,8 @@ product. It moves with the source code and is reviewed with behavior changes.
 | `product/` | Current user-facing behavior and interaction model. |
 | `decisions/` | Architectural decisions that constrain future work. |
 | `releases/` | Notes tying a released version to its verified behavior. |
+| `specs/` | Approved feature specifications and their interaction boundaries. |
+| `tickets/` | Small, verifiable implementation work items derived from specs. |
 
 Paper PDFs, extraction outputs, screenshots, and exploratory run records do
 not belong here. They live in the workspace-level `.scratch/papergraph/`

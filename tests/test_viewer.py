@@ -82,6 +82,8 @@ def test_current_claim_first_viewer_features_are_packaged(built: Path):
         'id="pg-claim-browser"',
         'id="pg-detail-inspector"',
         'id="pg-layout-reset"',
+        'id="pg-line-guide"',
+        'id="pg-line-guide-popover"',
     ):
         assert marker in index
     for marker in (
@@ -91,6 +93,12 @@ def test_current_claim_first_viewer_features_are_packaged(built: Path):
         "function renderClaimProvenanceTree",
         "function renderDeclaredMeasurements",
         "function renderClaimSupportItem",
+        "function comparisonConnectors",
+        "function comparisonConnectorAt",
+        "function selectComparisonConnector",
+        "function setLineGuideOpen",
+        "function requestRender",
+        "function advanceCamera",
         "Comparative evidence",
         "comparison_result_ids",
         "comparisonResultIds",

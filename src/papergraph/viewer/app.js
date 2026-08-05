@@ -67,12 +67,12 @@ const KIND_ORDER = ["artifact","procedure","configuration","result","claim","gap
 // colors (KIND[*].c above) stay constant across themes — they're mid-lightness
 // hues that already read fine on both a near-black and a near-white ground.
 const CANVAS_PAL = {
-  dark:  {edgeExplicit:"#5b6b83", edgeReconstructed:"#4a5975", edgeFocus:"#7d90ad",
+  dark:  {edgeExplicit:"#5b6b83", edgeReconstructed:"#4a5975", edgeFocus:"#7d90ad", support:"#bc6883", supportFocus:"#f08aa7",
           gap:"#ff5c6c", gapFocus:"#ff6b7a", gapRGB:"255,92,108", gapGlyph:"#ff8a95", accent:"#57e0d8",
           selRing:"#eafffb", nodeStroke:"rgba(6,9,14,0.65)",
           labelFill:"#cdd8e8", labelGapFill:"#ff9aa4", labelHalo:"rgba(8,11,18,0.85)",
           pillExplicit:"#8aa0bf", pillRecon:"#8b7fd6"},
-  light: {edgeExplicit:"#57657c", edgeReconstructed:"#7c8aa3", edgeFocus:"#3d4a63",
+  light: {edgeExplicit:"#57657c", edgeReconstructed:"#7c8aa3", edgeFocus:"#3d4a63", support:"#ad4163", supportFocus:"#c22f5c",
           gap:"#d33444", gapFocus:"#c22a3a", gapRGB:"211,52,68", gapGlyph:"#b3243b", accent:"#0e948c",
           selRing:"#12161f", nodeStroke:"rgba(10,14,20,0.32)",
           labelFill:"#28303e", labelGapFill:"#9c2436", labelHalo:"rgba(255,255,255,0.9)",
@@ -274,7 +274,10 @@ function routeElems(r){
    gap → claim) for a claim the paper never actually backs with a result. */
 function claimChainElems(claimId){
   const chain=buildClaimChain(claimId);
-  return {nd:chain.nodeIds,eg:chain.edgeIds};
+  return {nd:claimContextNodeIds(chain),eg:chain.edgeIds};
+}
+function claimContextNodeIds(chain){
+  return new Set([...(chain&&chain.nodeIds||[]),...(chain&&chain.comparisonResultIds||[])]);
 }
 function buildClaimChain(claimId){
   const nd=new Set([claimId]), eg=new Set();
@@ -314,6 +317,20 @@ function effectiveExpandedResultGroups(){
 }
 function resultGroupExpanded(id){
   return manualExpandedResultGroups.has(id)||claimExpandedResultGroups.has(id);
+}
+function claimEvidenceResultIds(claimId){
+  const resultIds=new Set();
+  exactEdges.filter(e=>!e.gap&&e.b===claimId&&e.rel==="supports").forEach(e=>{
+    resultIds.add(e.a);(e.ref.comparison_result_ids||[]).forEach(id=>{if(RN[id])resultIds.add(id);});
+  });
+  return resultIds;
+}
+function expandClaimEvidenceResultGroups(claimId){
+  if(viewMode!=="compact")return;
+  claimEvidenceResultIds(claimId).forEach(resultId=>{
+    const groupId=compactProjection.groupByMemberId[resultId];
+    if(groupId){claimExpandedResultGroups.add(groupId);placeResultGroupChildren(RN[groupId]);}
+  });
 }
 const RAIL_WIDTH_KEY="papergraph-rail-width";
 const RAIL_COLLAPSED_KEY="papergraph-rail-collapsed";
@@ -538,7 +555,7 @@ const HOME_X_BOUND=14,HOME_Y_BOUND=18,LOCAL_X_BOUND=16,LOCAL_Y_BOUND=20,LOCAL_RE
 const COLLISION_PADDING=18,COLLISION_K=0.3;
 let alpha=0, alphaTarget=0; const ALPHA_MIN=0.0018, ALPHA_DECAY=0.05;
 let localInteractionIds=null;
-function reheat(v){ alpha=Math.max(alpha,v); alphaTarget=v; }
+function reheat(v){ alpha=Math.max(alpha,v); alphaTarget=v; requestRender(); }
 function localInteractionIdsFor(nodeId){
   const ids=new Set([nodeId]);
   edges.forEach(edge=>{
@@ -640,12 +657,12 @@ let DPR=pickDPR();
 let cam={x:0,y:0,z:0.9};
 function resize(){ DPR=pickDPR();
   cv.width=innerWidth*DPR; cv.height=innerHeight*DPR; cv.style.width=innerWidth+"px"; cv.style.height=innerHeight+"px"; }
-addEventListener("resize",resize); resize();
+addEventListener("resize",()=>{resize();requestRender();}); resize();
 function toScreen(x,y){ return [ (x-cam.x)*cam.z + innerWidth/2, (y-cam.y)*cam.z + innerHeight/2 ]; }
 function toWorld(sx,sy){ return [ (sx-innerWidth/2)/cam.z + cam.x, (sy-innerHeight/2)/cam.z + cam.y ]; }
 
 /* ---------- selection / focus state ---------- */
-let hoverNode=null, selNode=null, selEdge=null, activeRoute=null;
+let hoverNode=null, hoverComparison=null, selNode=null, selEdge=null, activeRoute=null;
 let activeClaimId=null,claimChain=null,detailSelection=null,claimCameraFitted=false;
 let hi = null;   // {nd:Set, eg:Set} of highlighted ids (route or neighbor focus); null = all lit
 let kindOff = new Set();
@@ -672,22 +689,79 @@ function visibleEdge(e){
 }
 
 function computeHighlight(){
-  if(activeRoute){ hi=routeElems(activeRoute); return; }
-  if(activeClaimId&&claimChain){
-    hi={nd:new Set([...claimChain.nodeIds,...claimChain.comparisonResultIds]),eg:claimChain.edgeIds};
-    return;
-  }
-  if(selNode){
+  if(activeRoute){ hi=routeElems(activeRoute); }
+  else if(activeClaimId&&claimChain){
+    hi={nd:claimContextNodeIds(claimChain),eg:claimChain.edgeIds};
+  }else if(selNode){
     const nd=new Set([selNode.id]), eg=new Set();
     edges.forEach(e=>{ if(visibleEdge(e)&&(e.a===selNode.id||e.b===selNode.id)){eg.add(e.id);nd.add(e.a);nd.add(e.b);} });
-    hi={nd,eg}; return;
-  }
-  hi=null;
+    hi={nd,eg};
+  }else hi=null;
+  requestRender();
 }
 function litNode(n){ if(!visibleNode(n)||kindOff.has(n.kind)) return false; if(!hi) return true; return hi.nd.has(n.id); }
 function litEdge(e){ if(!visibleEdge(e))return false; if(!hi) return true; return hi.eg.has(e.id); }
 
 /* ---------- draw ---------- */
+function edgeCurveGeometry(e){
+  const p=RN[e.a],q=RN[e.b];if(!p||!q)return null;
+  const [x1,y1]=toScreen(p.x,p.y),[x2,y2]=toScreen(q.x,q.y);
+  const dx=x2-x1,dy=y2-y1,mx=(x1+x2)/2,my=(y1+y2)/2;
+  return {x1,y1,x2,y2,cx:mx-dy*0.08,cy:my+dx*0.08};
+}
+function quadraticPoint(curve,t){
+  const u=1-t;
+  return {x:u*u*curve.x1+2*u*t*curve.cx+t*t*curve.x2,y:u*u*curve.y1+2*u*t*curve.cy+t*t*curve.y2};
+}
+function comparisonConnectors(){
+  if(!activeClaimId||!claimChain)return [];
+  const connectors=[];
+  exactEdges.filter(e=>!e.gap&&e.b===activeClaimId&&e.rel==="supports").forEach(edge=>{
+    const comparatorIds=(edge.ref.comparison_result_ids||[]).filter(id=>RN[id]&&visibleNode(RN[id]));
+    comparatorIds.forEach((comparatorId,index)=>{
+      connectors.push({id:"__pg_comparison_"+edge.id+"_"+comparatorId,
+        virtualType:"comparison_connector",comparatorId,supportEdge:edge,index,count:comparatorIds.length});
+    });
+  });
+  return connectors;
+}
+function comparisonConnectorGeometry(connector){
+  const source=RN[connector.comparatorId],curve=edgeCurveGeometry(connector.supportEdge);
+  if(!source||!curve)return null;
+  const [sx,sy]=toScreen(source.x,source.y);
+  const spread=connector.count===1?0:(connector.index-(connector.count-1)/2)*0.13;
+  const anchor=quadraticPoint(curve,Math.max(0.34,Math.min(0.66,0.5+spread)));
+  const dx=anchor.x-sx,dy=anchor.y-sy,distance=Math.hypot(dx,dy)||1;
+  const trim=(source.r*cam.z)+4,x1=sx+dx/distance*trim,y1=sy+dy/distance*trim;
+  const normalX=-dy/distance,normalY=dx/distance;
+  const bend=Math.max(14,Math.min(38,distance*0.14))*(sy<=anchor.y?-1:1)+(connector.index-(connector.count-1)/2)*8;
+  return {x1,y1,x2:anchor.x,y2:anchor.y,cx:(x1+anchor.x)/2+normalX*bend,cy:(y1+anchor.y)/2+normalY*bend,anchor};
+}
+function comparisonConnectorAt(sx,sy){
+  let best=null,bestDistance=9;
+  comparisonConnectors().forEach(connector=>{
+    const geometry=comparisonConnectorGeometry(connector);if(!geometry)return;
+    let previous={x:geometry.x1,y:geometry.y1},distance=Infinity;
+    for(let step=1;step<=14;step++){
+      const point=quadraticPoint(geometry,step/14);
+      distance=Math.min(distance,segDist(sx,sy,previous.x,previous.y,point.x,point.y));previous=point;
+    }
+    if(distance<bestDistance){bestDistance=distance;best=connector;}
+  });
+  return best;
+}
+function drawComparisonConnector(connector,P){
+  const geometry=comparisonConnectorGeometry(connector);if(!geometry)return;
+  const source=RN[connector.comparatorId],edge=connector.supportEdge;
+  if(!source||kindOff.has(source.kind)||kindOff.has(RN[edge.b].kind))return;
+  const lit=!hi||(hi.nd.has(connector.comparatorId)&&hi.eg.has(edge.id));
+  const selected=selEdge===edge,hovered=hoverComparison&&hoverComparison.id===connector.id;
+  ctx.save();ctx.lineCap="round";ctx.strokeStyle=P.accent;ctx.lineWidth=selected||hovered?2.4:1.7;
+  ctx.globalAlpha=lit?(selected||hovered?1:0.82):0.08;ctx.setLineDash([1.5,5]);
+  ctx.beginPath();ctx.moveTo(geometry.x1,geometry.y1);ctx.quadraticCurveTo(geometry.cx,geometry.cy,geometry.x2,geometry.y2);ctx.stroke();
+  ctx.setLineDash([]);ctx.globalAlpha=lit?(selected||hovered?1:0.9):0.08;ctx.fillStyle=P.accent;
+  ctx.translate(geometry.anchor.x,geometry.anchor.y);ctx.rotate(Math.PI/4);ctx.fillRect(-3.5,-3.5,7,7);ctx.restore();
+}
 function relLabel(e){ return e.rel||""; }
 function drawResultGroupNode(n,x,y,R,k,lit,isHover){
   const light=document.documentElement.getAttribute("data-theme")==="light";
@@ -740,13 +814,13 @@ function draw(){
     const onSel = selEdge===e;
     let col, w, dash;
     if(e.gap){ col=P.gap; w=1.5; dash=[1.5,5]; }
-    else if(e.level==="explicit"||e.level==="summary"){ col=P.edgeExplicit; w=1.4; dash=[]; }
-    else { col=P.edgeReconstructed; w=1.2; dash=[5,5]; }
+    else if(e.level==="explicit"||e.level==="summary"){ col=e.rel==="supports"?P.support:P.edgeExplicit; w=e.rel==="supports"?1.9:1.4; dash=[]; }
+    else { col=e.rel==="supports"?P.support:P.edgeReconstructed; w=e.rel==="supports"?1.7:1.2; dash=[5,5]; }
     ctx.globalAlpha = lit ? (e.gap?0.95:0.7) : 0.06;
     const summaryExpanded=summaryEdgeExpanded(e);
     if(summaryExpanded&&!onSel){ctx.globalAlpha*=0.32;w*=0.82;}
     if(onSel){col=P.accent;w=2.4;ctx.globalAlpha=1;}
-    else if(hi&&lit&&!hi.soft){col=e.gap?P.gapFocus:P.edgeFocus;w+=0.5;}
+    else if(hi&&lit&&!hi.soft){col=e.gap?P.gapFocus:(e.rel==="supports"?P.supportFocus:P.edgeFocus);w+=0.5;}
     ctx.strokeStyle=col; ctx.lineWidth=w; ctx.setLineDash(dash);
     if(e.a===e.b){drawSummarySelfLoop(p,col,w,dash);return;}
     // slight curve
@@ -769,6 +843,7 @@ function draw(){
     }
   });
   ctx.setLineDash([]);
+  comparisonConnectors().forEach(connector=>drawComparisonConnector(connector,P));
 
   /* ---- flow-pulse: ONE dot per highlighted edge, edge-colored, drawn BELOW the nodes.
      Duty cycle = travel then pause, so density stays low. NOT gated by reduced-motion. */
@@ -808,7 +883,9 @@ function draw(){
     ctx.globalAlpha = lit ? 1 : 0.11;
     if(n.gap){
       // pulsing hollow ring
-      const pulse = REDUCED?0:(0.5+0.5*Math.sin(tms/420));
+      // Idle graphs are deliberately static. The pulse returns while a reader
+      // is tracing an active route or Claim evidence chain.
+      const pulse = REDUCED||!(hi&&!hi.soft)?0.75:(0.5+0.5*Math.sin(tms/420));
       ctx.beginPath(); ctx.arc(x,y,R,0,7);
       ctx.fillStyle=`rgba(${P.gapRGB},0.10)`; ctx.fill();
       ctx.lineWidth=1.8; ctx.setLineDash([3,3]);
@@ -846,13 +923,28 @@ function draw(){
   ctx.restore(); ctx.globalAlpha=1;
 }
 
-/* ---------- animation loop: steps physics only while alpha is warm, else just redraws ---------- */
-let tms=0, raf;
-function loop(t){
-  tms=t||0;
-  if(alpha>0 || alphaTarget>0) tick();      // frozen when alpha==0 → nodes are static
-  draw();
+/* ---------- animation loop: canvas sleeps while the graph is static ---------- */
+let tms=0, raf=null;
+function focusedCanvasMotion(){ return !!(hi&&!hi.soft); }
+function advanceCamera(now){
+  if(!camAnim)return false;
+  const k=Math.min(1,(now-camAnim.t0)/420),e=1-Math.pow(1-k,3);
+  cam.x=camAnim.s.x+(camAnim.tx-camAnim.s.x)*e;
+  cam.y=camAnim.s.y+(camAnim.ty-camAnim.s.y)*e;
+  cam.z=camAnim.s.z+(camAnim.tz-camAnim.s.z)*e;
+  if(k>=1)camAnim=null;
+  return !!camAnim;
+}
+function requestRender(){
+  if(raf!==null)return;
   raf=requestAnimationFrame(loop);
+}
+function loop(t){
+  raf=null;tms=t||performance.now();
+  if(alpha>0||alphaTarget>0)tick();
+  const cameraMoving=advanceCamera(tms);
+  draw();
+  if(alpha>0||alphaTarget>0||cameraMoving||focusedCanvasMotion())requestRender();
 }
 
 /* ---------- hit testing ---------- */
@@ -863,6 +955,7 @@ function nodeAt(sx,sy){
   return null;
 }
 function edgeAt(sx,sy){
+  const comparison=comparisonConnectorAt(sx,sy);if(comparison)return comparison;
   let best=null,bd=7;
   for(const e of edges){ const p=RN[e.a],q=RN[e.b]; if(!visibleEdge(e)||!litEdge(e))continue;
     if(e.a===e.b){const loop=selfLoopGeometry(p),d=Math.abs(Math.hypot(sx-loop.x,sy-loop.y)-loop.radius);
@@ -879,24 +972,31 @@ function segDist(px,py,x1,y1,x2,y2){ const dx=x2-x1,dy=y2-y1; const L=dx*dx+dy*d
 let dragNode=null, panning=false, last=null, moved=0, downPt=null;
 cv.addEventListener("pointerdown",ev=>{
   const sx=ev.clientX,sy=ev.clientY; downPt=[sx,sy]; moved=0; last=[sx,sy];
+  hoverComparison=null;
   const n=nodeAt(sx,sy);
   if(n){ dragNode=n; n.fixx=n.x; n.fixy=n.y; localInteractionIds=localInteractionIdsFor(n.id); reheat(LOCAL_REHEAT); cv.setPointerCapture(ev.pointerId); }
-  else { panning=true; cv.classList.add("dragging"); }
+  else { panning=true; cv.classList.add("dragging");requestRender(); }
 });
 cv.addEventListener("pointermove",ev=>{
   const sx=ev.clientX,sy=ev.clientY;
   if(dragNode){ const [wx,wy]=toWorld(sx,sy); dragNode.fixx=wx; dragNode.fixy=wy; dragNode.x=wx; dragNode.y=wy; reheat(LOCAL_REHEAT); moved+=Math.abs(sx-last[0])+Math.abs(sy-last[1]); last=[sx,sy]; return; }
-  if(panning){ cam.x-=(sx-last[0])/cam.z; cam.y-=(sy-last[1])/cam.z; moved+=Math.abs(sx-last[0])+Math.abs(sy-last[1]); last=[sx,sy]; return; }
+  if(panning){ cam.x-=(sx-last[0])/cam.z; cam.y-=(sy-last[1])/cam.z; moved+=Math.abs(sx-last[0])+Math.abs(sy-last[1]); last=[sx,sy];requestRender(); return; }
   // hover
   const n=nodeAt(sx,sy);
-  hoverNode=n;
-  cv.classList.toggle("overnode",!!n);
+  const comparison=n?null:comparisonConnectorAt(sx,sy);
+  hoverNode=n;hoverComparison=comparison;
+  cv.classList.toggle("overnode",!!n||!!comparison);
   const tip=document.getElementById("pg-tip");
   if(n){ const k=KIND[n.kind]||KIND.result;
     const detail=n.virtualType==="result_group"?` · ${n.resultCount} results`:"";
     tip.innerHTML=`<span class="tk" style="color:${k.c}">${n.gap?"gap · "+(n.ref.category||""):n.kind}${detail}</span>${esc(n.label)}`;
     const [x,y]=toScreen(n.x,n.y); tip.style.left=x+"px"; tip.style.top=(y-n.r*cam.z)+"px"; tip.style.opacity=1;
+  } else if(comparison){
+    const geometry=comparisonConnectorGeometry(comparison);
+    tip.innerHTML=`<span class="tk" style="color:${pal().accent}">comparison evidence</span>${esc(RN[comparison.comparatorId].label)} joins the selected support relation`;
+    tip.style.left=geometry.anchor.x+"px";tip.style.top=geometry.anchor.y+"px";tip.style.opacity=1;
   } else tip.style.opacity=0;
+  requestRender();
 });
 function endPtr(ev){
   if(dragNode){ try{cv.releasePointerCapture(ev.pointerId);}catch(e){}
@@ -910,12 +1010,14 @@ function endPtr(ev){
     if(n) selectNode(n);
     else {
       const e=edgeAt(sx,sy);
-      if(e && !e.gap)selectEdge(e);
+      if(e&&e.virtualType==="comparison_connector")selectComparisonConnector(e);
+      else if(e && !e.gap)selectEdge(e);
       else if(e&&e.gap&&e.ref&&RN[e.ref.id])selectNode(RN[e.ref.id]);
       else clearCanvasSelection();
     }
   }
   downPt=null;
+  requestRender();
 }
 cv.addEventListener("pointerup",endPtr);
 cv.addEventListener("pointercancel",endPtr);
@@ -923,6 +1025,7 @@ cv.addEventListener("wheel",ev=>{ ev.preventDefault();
   const [wx,wy]=toWorld(ev.clientX,ev.clientY);
   const f=Math.exp(-ev.deltaY*0.0012); cam.z=Math.max(0.25,Math.min(3.2,cam.z*f));
   const [nx,ny]=toWorld(ev.clientX,ev.clientY); cam.x+=wx-nx; cam.y+=wy-ny;
+  requestRender();
 },{passive:false});
 
 /* ---------- selection actions ---------- */
@@ -944,7 +1047,7 @@ function selectNode(n){
 }
 function selectEdge(e){
   if(activeClaimId&&claimChain&&claimChain.edgeIds.has(e.id)){
-    detailSelection={type:"edge",value:e};selNode=null;selEdge=e;renderDetailInspector();return;
+    detailSelection={type:"edge",value:e};selNode=null;selEdge=e;renderDetailInspector();requestRender();return;
   }
   if(activeClaimId)exitClaimBrowsing(false);
   selNode=null;activeRoute=null;selEdge=e;detailSelection={type:"edge",value:e};hi=null;
@@ -956,7 +1059,10 @@ function selectEdge(e){
     hi={nd,eg};
     renderDetailInspector();settleVisible(100);
   } else renderDetailInspector();
-  renderCrumb();
+  renderCrumb();requestRender();
+}
+function selectComparisonConnector(connector){
+  selectEdge(connector.supportEdge);
 }
 function selectDetailNode(n){
   detailSelection={type:"node",value:n};selNode=n;selEdge=null;activeRoute=null;
@@ -972,18 +1078,11 @@ function enterClaimBrowsing(claimId){
   if(activeClaimId!==claimId)claimCameraFitted=false;
   activeClaimId=claimId;claimChain=buildClaimChain(claimId);
   claimExpandedResultGroups.clear();
-  exactEdges.filter(e=>!e.gap&&e.b===claimId&&e.rel==="supports").forEach(e=>{
-    [e.a,...(e.ref.comparison_result_ids||[])].forEach(resultId=>{
-      const groupId=compactProjection.groupByMemberId[resultId];
-      if(viewMode==="compact"&&groupId){
-        claimExpandedResultGroups.add(groupId);placeResultGroupChildren(RN[groupId]);
-      }
-    });
-  });
+  expandClaimEvidenceResultGroups(claimId);
   selNode=RN[claimId]||null;selEdge=null;activeRoute=null;detailSelection=null;
   closeDetailInspector();computeHighlight();renderClaimBrowser();syncOutlineUI();renderCrumb();
   settleVisible(120);
-  if(!claimCameraFitted){fitIds(claimChain.nodeIds);claimCameraFitted=true;}
+  if(!claimCameraFitted){fitIds(claimContextNodeIds(claimChain));claimCameraFitted=true;}
 }
 function exitClaimBrowsing(clearDetail){
   activeClaimId=null;claimChain=null;claimExpandedResultGroups.clear();claimCameraFitted=false;
@@ -994,7 +1093,7 @@ function exitClaimBrowsing(clearDetail){
 function clearSel(){
   if(activeClaimId){exitClaimBrowsing(true);return;}
   selNode=null;selEdge=null;activeRoute=null;detailSelection=null;hi=null;
-  syncOutlineUI();closeDetailInspector();renderCrumb();
+  syncOutlineUI();closeDetailInspector();renderCrumb();requestRender();
 }
 function clearCanvasSelection(){
   if(!activeClaimId){clearSel();return;}
@@ -1024,6 +1123,7 @@ function toggleResultGroup(n){
   if(!toggleManualResultGroup(n.id,manualExpandedResultGroups,claimExpandedResultGroups,!!activeClaimId))return;
   if(wasOpen)clearCollapsedResultSelection(n);else placeResultGroupChildren(n);
   settleVisible(100);
+  requestRender();
 }
 function rightDockWidth(){
   if(innerWidth<=900)return activeClaimId||detailSelection?16:0;
@@ -1053,12 +1153,8 @@ function focusOn(n){ // ease camera toward node, accounting for the left rail
   animCam(n.x-canvasOffset(s),n.y,s);
 }
 let camAnim=null;
-function animCam(tx,ty,tz){ const s={x:cam.x,y:cam.y,z:cam.z}, t0=tms;
-  camAnim={s,tx,ty,tz,t0}; }
-(function camLoop(){ requestAnimationFrame(camLoop);
-  if(!camAnim)return; const k=Math.min(1,(tms-camAnim.t0)/420); const e=1-Math.pow(1-k,3);
-  cam.x=camAnim.s.x+(camAnim.tx-camAnim.s.x)*e; cam.y=camAnim.s.y+(camAnim.ty-camAnim.s.y)*e;
-  cam.z=camAnim.s.z+(camAnim.tz-camAnim.s.z)*e; if(k>=1)camAnim=null; })();
+function animCam(tx,ty,tz){ const s={x:cam.x,y:cam.y,z:cam.z}, t0=tms||performance.now();
+  camAnim={s,tx,ty,tz,t0};requestRender(); }
 
 /* ---------- inspector rendering ---------- */
 const claimBrowser=document.getElementById("pg-claim-browser");
@@ -1487,6 +1583,8 @@ function renderInspectorEdge(e){
     <div class="ititle">${esc(p.label)} <span style="color:var(--ink-faint)">→</span> ${esc(q.label)}</div>`;
   let h="";
   if(e.ref.rationale) h+=`<div class="sec"><div class="sh">Why this link</div><div class="rationale">${esc(e.ref.rationale)}</div></div>`;
+  const declaredMeasurements=renderDeclaredMeasurements(e);
+  if(declaredMeasurements)h+=`<div class="sec"><div class="sh">Declared evidence</div>${declaredMeasurements}</div>`;
   const ev=evBlock(e.ref.evidence_ids, e.level!=="explicit");
   if(ev) h+=`<div class="sec"><div class="sh">Evidence <span class="n">${(e.ref.evidence_ids||[]).length}</span></div>${ev}</div>`;
   if(e.level!=="explicit") h+=`<div class="sec"><div style="font-size:11.5px;color:var(--ink-faint);line-height:1.5">Reconstructed — inferred from the paper's structure, not stated verbatim.</div></div>`;
@@ -1654,6 +1752,7 @@ document.getElementById("pg-search").addEventListener("input",ev=>{
     settleVisible(80);
     fitIds(searchHit);
   }
+  requestRender();
 });
 
 /* ---------- controls ---------- */
@@ -1669,6 +1768,7 @@ function setRailWidth(width,preserveCanvas,persist){
     cam.x-=delta/(2*cam.z);
   }
   if(persist!==false){try{localStorage.setItem(RAIL_WIDTH_KEY,String(next));}catch(e){}}
+  requestRender();
 }
 function setRailCollapsed(collapsed,preserveCanvas,persist){
   const next=!!collapsed;if(next===railCollapsed&&persist!==false)return;
@@ -1685,6 +1785,7 @@ function setRailCollapsed(collapsed,preserveCanvas,persist){
     cam.x-=(newDisplayed-oldDisplayed)/(2*cam.z);
   }
   if(persist!==false){try{localStorage.setItem(RAIL_COLLAPSED_KEY,next?"true":"false");}catch(e){}}
+  requestRender();
 }
 function initRailControls(){
   let storedWidth=RAIL_DEFAULT,storedCollapsed=false;
@@ -1758,6 +1859,7 @@ function setDetailWidth(width,preserveCanvas,persist){
     cam.x+=delta/(2*cam.z);
   }
   if(persist!==false){try{localStorage.setItem(DETAIL_WIDTH_KEY,String(next));}catch(e){}}
+  requestRender();
 }
 function initDetailResizeControl(){
   let storedWidth=DETAIL_DEFAULT;
@@ -1809,6 +1911,7 @@ function setClaimWidth(width,preserveCanvas,persist){
     cam.x+=delta/(2*cam.z);
   }
   if(persist!==false){try{localStorage.setItem(CLAIM_WIDTH_KEY,String(next));}catch(e){}}
+  requestRender();
 }
 function initClaimResizeControl(){
   let storedWidth=CLAIM_DEFAULT;
@@ -1859,12 +1962,7 @@ function setViewMode(mode,initial){
   viewMode=mode==="full"?"full":"compact";
   if(viewMode==="compact"){
     manualExpandedResultGroups.clear();claimExpandedResultGroups.clear();
-    if(activeClaimId){
-      exactEdges.filter(e=>!e.gap&&e.b===activeClaimId&&e.rel==="supports").forEach(e=>{
-        const groupId=compactProjection.groupByMemberId[e.a];
-        if(groupId){claimExpandedResultGroups.add(groupId);placeResultGroupChildren(RN[groupId]);}
-      });
-    }
+    if(activeClaimId)expandClaimEvidenceResultGroups(activeClaimId);
   }
   const root=document.getElementById("pg-root");
   root.classList.toggle("compact-mode",viewMode==="compact");
@@ -1877,7 +1975,7 @@ function setViewMode(mode,initial){
   if(!activeClaimId){selNode=null;hi=null;}else{selNode=RN[activeClaimId];computeHighlight();renderClaimBrowser();}
   syncOutlineUI();renderCrumb();
   settleVisible(initial?420:260);
-  if(activeClaimId&&claimChain)fitIds(claimChain.nodeIds);else fitAll();
+  if(activeClaimId&&claimChain)fitIds(claimContextNodeIds(claimChain));else fitAll();
 }
 document.getElementById("pg-claim-close").addEventListener("click",()=>exitClaimBrowsing(true));
 document.getElementById("pg-detail-close").addEventListener("click",()=>{
@@ -1890,8 +1988,19 @@ document.getElementById("pg-tab-claim").addEventListener("click",()=>{
 document.getElementById("pg-tab-detail").addEventListener("click",()=>{
   if(detailSelection)document.getElementById("pg-root").classList.add("detail-tab-active");
 });
-document.getElementById("pg-zin").addEventListener("click",()=>{cam.z=Math.min(3.2,cam.z*1.25);});
-document.getElementById("pg-zout").addEventListener("click",()=>{cam.z=Math.max(0.25,cam.z/1.25);});
+const lineGuideButton=document.getElementById("pg-line-guide");
+const lineGuidePopover=document.getElementById("pg-line-guide-popover");
+function setLineGuideOpen(open){
+  lineGuidePopover.hidden=!open;lineGuideButton.setAttribute("aria-expanded",open?"true":"false");
+}
+lineGuideButton.addEventListener("click",ev=>{
+  ev.stopPropagation();setLineGuideOpen(lineGuidePopover.hidden);
+});
+document.addEventListener("pointerdown",ev=>{
+  if(!lineGuidePopover.hidden&&!lineGuidePopover.contains(ev.target)&&!lineGuideButton.contains(ev.target))setLineGuideOpen(false);
+});
+document.getElementById("pg-zin").addEventListener("click",()=>{cam.z=Math.min(3.2,cam.z*1.25);requestRender();});
+document.getElementById("pg-zout").addEventListener("click",()=>{cam.z=Math.max(0.25,cam.z/1.25);requestRender();});
 document.getElementById("pg-zfit").addEventListener("click",fitAll);
 document.getElementById("pg-layout-reset").addEventListener("click",()=>{
   applyEvidenceFlowLayout();
@@ -1920,6 +2029,6 @@ initDetailResizeControl();
 initClaimResizeControl();
 applyEvidenceFlowLayout();
 setViewMode("compact",true);
-requestAnimationFrame(loop);
+requestRender();
   }
 })();

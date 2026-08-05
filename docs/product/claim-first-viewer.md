@@ -30,6 +30,13 @@ chain: supporting Results, their upstream provenance, relevant edges, and any
 declared Gap. Result aggregates that are needed for the chain expand only for
 that browse state. Exiting Claim browsing restores the prior aggregation state.
 
+For a comparative support relation, declared comparator Results are contextual
+members of that Claim browse state. The canvas adds a teal dotted connector from
+each comparator to an anchor on the real focal Result-to-Claim support edge.
+This is a viewer-only comparison projection, not a second direct support edge
+or a change to graph data. Selecting it opens the originating support relation
+and its declared comparative evidence in the adjacent inspector.
+
 When a Claim has several Gaps, the viewer emphasizes them but leaves detailed
 Gap inspection to the reader rather than opening an arbitrary one.
 
@@ -48,3 +55,7 @@ through procedures/configurations and Results to Claims. Its force relaxation
 is deliberately local: dragging one node preserves the rest of the map, while
 short-range collision handling prevents overlaps. The reset control restores
 the deterministic layout and camera framing.
+
+The Line guide control describes the visual language without adding permanent
+canvas labels: structural evidence flow, reconstructed relations, direct Result
+support, Claim-browse comparison context, and recorded Gaps.

@@ -355,6 +355,21 @@ table.meas tr:last-child td{border-bottom:none}
   backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
 #pg-bot .zoom button:hover{color:var(--ink);border-color:var(--accent-dim)}
 #pg-bot .zoom #pg-rail-toggle{display:grid;place-items:center;padding:0}
+.line-guide-glyph{position:relative;display:block;width:14px;height:12px;border-top:1.5px solid currentColor}
+.line-guide-glyph::before,.line-guide-glyph::after{content:"";position:absolute;left:0;width:14px}
+.line-guide-glyph::before{top:4px;border-top:1.5px dashed currentColor}
+.line-guide-glyph::after{top:9px;border-top:2px dotted currentColor}
+.line-guide-popover{position:absolute;z-index:9;left:18px;bottom:52px;width:246px;padding:11px 12px;
+  border:1px solid var(--stroke2);border-radius:8px;background:var(--panel-solid);box-shadow:0 12px 30px -14px rgba(0,0,0,.85);
+  font-size:11px;color:var(--ink-dim);pointer-events:auto}
+.line-guide-title{margin-bottom:8px;font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--ink)}
+.line-guide-row{display:flex;align-items:center;gap:9px;min-height:23px;line-height:1.25}
+.line-guide-swatch{position:relative;display:block;flex:none;width:33px;border-top:2px solid var(--stroke2)}
+.line-guide-swatch.reconstructed{border-top-style:dashed}
+.line-guide-swatch.support{border-top-color:var(--k-claim);border-top-width:3px}
+.line-guide-swatch.comparison{border-top:2px dotted var(--accent)}
+.line-guide-swatch.comparison i{position:absolute;top:-4px;left:15px;width:7px;height:7px;background:var(--accent);transform:rotate(45deg)}
+.line-guide-swatch.gap{border-top:2px dashed var(--k-gap)}
 .sidebar-glyph{position:relative;width:14px;height:12px;border:1.25px solid currentColor;border-radius:2px;opacity:.9}
 .sidebar-glyph::before{content:"";position:absolute;left:3px;top:-1px;bottom:-1px;border-left:1.25px solid currentColor}
 .sidebar-glyph::after{content:"";position:absolute;right:1px;top:3px;width:4px;height:4px;
@@ -424,6 +439,7 @@ table.meas tr:last-child td{border-bottom:none}
 :root[data-theme="light"] #pg-bot .zoom button,
 :root[data-theme="light"] #pg-top .icon-btn{box-shadow:0 10px 26px -16px rgba(30,40,60,.2)}
 :root[data-theme="light"] #pg-tip{box-shadow:0 10px 24px -12px rgba(30,40,60,.25)}
+:root[data-theme="light"] .line-guide-popover{box-shadow:0 10px 24px -12px rgba(30,40,60,.25)}
 :root[data-theme="light"] .search:focus{box-shadow:0 0 0 3px rgba(14,148,140,.12)}
 :root[data-theme="light"] .leg:hover,
 :root[data-theme="light"] .grp .g:hover,

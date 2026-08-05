@@ -112,6 +112,8 @@
         aria-label="Collapse sidebar" aria-expanded="true"><span class="sidebar-glyph" aria-hidden="true"></span></button>
       <button id="pg-layout-reset" type="button" title="Restore default layout"
         aria-label="Restore default layout">&#8634;</button>
+      <button id="pg-line-guide" type="button" title="Explain line styles"
+        aria-label="Explain line styles" aria-expanded="false"><span class="line-guide-glyph" aria-hidden="true"></span></button>
       <button id="pg-zin" title="Zoom in">+</button>
       <button id="pg-zout" title="Zoom out">−</button>
       <button id="pg-zfit" title="Fit / reset" style="width:auto;padding:0 8px;font-size:11px;font-family:var(--mono)">fit</button>
@@ -119,6 +121,15 @@
     <div class="crumb" id="pg-crumb" style="display:none"></div>
     <div class="hint"><b>drag</b> pan · <b>scroll</b> zoom · <b>click</b> a claim/result to trace its route</div>
   </div>
+
+  <aside id="pg-line-guide-popover" class="line-guide-popover" hidden aria-label="Line guide">
+    <div class="line-guide-title">Line guide</div>
+    <div class="line-guide-row"><span class="line-guide-swatch structural"></span><span>Evidence flow</span></div>
+    <div class="line-guide-row"><span class="line-guide-swatch reconstructed"></span><span>Reconstructed relation</span></div>
+    <div class="line-guide-row"><span class="line-guide-swatch support"></span><span>Result supports Claim</span></div>
+    <div class="line-guide-row"><span class="line-guide-swatch comparison"><i></i></span><span>Comparison evidence in Claim browse</span></div>
+    <div class="line-guide-row"><span class="line-guide-swatch gap"></span><span>Recorded evidence gap</span></div>
+  </aside>
 
   <div id="pg-tip"></div>
 </div>
