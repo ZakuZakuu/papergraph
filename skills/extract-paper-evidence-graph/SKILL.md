@@ -12,12 +12,30 @@ reported results, reconstruct defensible multi-span connections, and expose
 unresolved links as localized gaps. Do not optimize for a graph that merely
 looks complete.
 
-## Required CLI Gate
+## Required CLI Gate and Setup Consent
 
 Before reading the paper or writing any extraction artifact, establish a
 compatible `papergraph` CLI. A configured development environment may use its
 known matching `papergraph` command or an already-provided workspace bundle.
-Otherwise, download the pinned zero-install release bundle:
+
+If no compatible command or bundle is already available, do not silently
+download, install, or create an environment. First check whether `python3`
+exists and report its version. Then tell the user exactly what setup is needed
+and ask for confirmation. The default, lowest-impact proposal is:
+
+> PaperGraph needs a local CLI to validate and build the graph. I found Python
+> `<version>` and can download the pinned, zero-install `papergraph-v0.1.3.pyz`
+> into `<workspace>/.papergraph/`. This does not modify system Python or install
+> dependencies. Shall I use that location?
+
+Wait for confirmation before downloading the bundle. If the user prefers a
+different location, environment, or `pip install`, follow that preference. Do
+not install into system Python without explicit approval. If `python3` is not
+available, explain that fact and ask the user to provide or approve a suitable
+Python 3.10+ environment.
+
+After approval, download the pinned zero-install release bundle when it is the
+chosen setup:
 
 ```sh
 if [ ! -f .papergraph/papergraph-v0.1.3.pyz ]; then
@@ -30,7 +48,7 @@ python3 .papergraph/papergraph-v0.1.3.pyz --help
 
 Use the working command established here for final validation and, when
 requested, viewer generation. If neither a matching configured command nor the
-pinned bundle can run, stop before writing `coverage-plan.json`, `graph.json`,
+approved bundle can run, stop before writing `coverage-plan.json`, `graph.json`,
 or `extraction-report.md`. Report `papergraph CLI unavailable` with the failed
 command and its output; do not claim the extraction is complete.
 
