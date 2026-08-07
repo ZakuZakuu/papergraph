@@ -46,6 +46,9 @@
       <div class="reading-basis" id="pg-reading-basis"></div>
       <div class="reading-stats" id="pg-reading-stats"></div>
     </section>
+    <div class="card">
+      <input class="search" id="pg-search" placeholder="search nodes…" autocomplete="off" spellcheck="false">
+    </div>
     <section class="card" id="pg-core-claims">
       <h2>Core claims</h2>
       <div class="reading-outline" id="pg-outline"></div>
@@ -54,13 +57,10 @@
       <summary>What the paper introduces</summary>
       <div id="pg-structural"></div>
     </details>
-    <section class="card questions-card">
-      <h2>Open questions</h2>
+    <details class="card introduces questions-card" id="pg-open-questions-card">
+      <summary>Open questions <span class="section-count" id="pg-open-questions-count"></span></summary>
       <div class="open-questions" id="pg-open-questions"></div>
-    </section>
-    <div class="card">
-      <input class="search" id="pg-search" placeholder="search nodes…" autocomplete="off" spellcheck="false">
-    </div>
+    </details>
     <div class="card">
       <div class="card-head">
         <h2>Categories</h2>
@@ -70,10 +70,10 @@
         </div>
       </div>
       <div class="legend" id="pg-legend"></div>
-    </div>
-    <div class="card full-only">
-      <h2>Graph</h2>
-      <div class="stats" id="pg-stats"></div>
+      <div class="graph-stats full-only">
+        <h2>Graph stats</h2>
+        <div class="stats" id="pg-stats"></div>
+      </div>
     </div>
   </div>
   <div id="pg-rail-resizer" role="separator" tabindex="0"

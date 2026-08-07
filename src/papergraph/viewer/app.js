@@ -1031,6 +1031,15 @@ cv.addEventListener("wheel",ev=>{ ev.preventDefault();
 /* ---------- selection actions ---------- */
 function selectNode(n){
   if(n.virtualType==="result_group"){ toggleResultGroup(n); return; }
+  if(n.gap){
+    const questions=document.getElementById("pg-open-questions-card");
+    if(questions)questions.open=true;
+    requestAnimationFrame(()=>{
+      const row=[...document.querySelectorAll("#pg-open-questions [data-gap]")]
+        .find(el=>el.getAttribute("data-gap")===n.id);
+      if(row)row.scrollIntoView({block:"nearest"});
+    });
+  }
   if(!n.gap&&n.kind==="claim"){enterClaimBrowsing(n.id);return;}
   if(activeClaimId&&claimChain&&(claimChain.nodeIds.has(n.id)||claimChain.comparisonResultIds.has(n.id))){selectDetailNode(n);return;}
   if(activeClaimId){
@@ -1710,6 +1719,8 @@ function buildReadingSummary(){
     `<span class="summary-stat"><b>${headlineCount}</b> core claims</span>
      <span class="summary-stat"><b>${resultCount}</b> results</span>
      <span class="summary-stat gaps"><b>${gaps.length}</b> gaps</span>`;
+  const questionCount=document.getElementById("pg-open-questions-count");
+  if(questionCount)questionCount.textContent=gaps.length?`${gaps.length}`:"";
   const q=document.getElementById("pg-open-questions");
   q.innerHTML=gaps.length?gaps.map((gp,i)=>`<button type="button" class="open-question" data-gap="${esc(gp.id)}">
     <span class="qmark">?</span><span class="qtext">${esc(gp.question||gp.missing_content||"Missing evidence")}</span>
