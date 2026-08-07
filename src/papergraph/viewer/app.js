@@ -1176,11 +1176,12 @@ function closeClaimBrowser(){
 }
 function openDetailInspector(){
   detailInspector.classList.add("open");
+  document.getElementById("pg-root").classList.add("detail-open");
   if(activeClaimId)document.getElementById("pg-root").classList.add("detail-tab-active");
 }
 function closeDetailInspector(){
   detailInspector.classList.remove("open");
-  document.getElementById("pg-root").classList.remove("detail-tab-active");
+  document.getElementById("pg-root").classList.remove("detail-open","detail-tab-active");
 }
 function esc(s){ return (s==null?"":String(s)).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c])); }
 const compactScientificNotation=/^([+-]?(?:\d+(?:\.\d*)?|\.\d+))\s*[·×x]\s*10([+-]?\d+)$/;
@@ -1799,11 +1800,12 @@ function setRailCollapsed(collapsed,preserveCanvas,persist){
   requestRender();
 }
 function initRailControls(){
-  let storedWidth=RAIL_DEFAULT,storedCollapsed=false;
+  let storedWidth=RAIL_DEFAULT,storedCollapsed=innerWidth<=900;
   try{
     const raw=localStorage.getItem(RAIL_WIDTH_KEY);
     if(raw!==null&&Number.isFinite(+raw))storedWidth=+raw;
-    storedCollapsed=localStorage.getItem(RAIL_COLLAPSED_KEY)==="true";
+    const collapsed=localStorage.getItem(RAIL_COLLAPSED_KEY);
+    if(collapsed!==null)storedCollapsed=collapsed==="true";
   }catch(e){}
   setRailWidth(storedWidth,false,false);
   setRailCollapsed(storedCollapsed,false,false);

@@ -7,13 +7,14 @@
   <style>
     :root { color-scheme: dark; font-family: ui-sans-serif, system-ui, sans-serif; background: #10141b; color: #e8edf4; }
     * { box-sizing: border-box; }
-    body { margin: 0; min-width: 320px; }
+    html, body { height: 100%; }
+    body { display: flex; flex-direction: column; margin: 0; min-width: 320px; min-height: 100dvh; overflow: hidden; }
     .notice { align-items: center; background: #1a2330; border-bottom: 1px solid #38475c; display: flex; gap: 16px; min-height: 52px; padding: 9px 18px; }
     .label { color: #f0c36a; flex: 0 0 auto; font-size: 12px; font-weight: 700; text-transform: uppercase; }
     .copy { color: #c8d2df; flex: 1 1 auto; font-size: 13px; line-height: 1.35; }
     a { color: #8cc7ff; }
-    iframe { border: 0; display: block; height: calc(100vh - 52px); min-height: 500px; width: 100%; }
-    @media (max-width: 720px) { .notice { align-items: flex-start; flex-direction: column; gap: 4px; min-height: 72px; } iframe { height: calc(100vh - 72px); } }
+    iframe { border: 0; display: block; flex: 1 1 auto; height: auto; min-height: 0; width: 100%; }
+    @media (max-width: 720px) { .notice { align-items: flex-start; flex-direction: column; gap: 4px; } }
   </style>
 </head>
 <body>
