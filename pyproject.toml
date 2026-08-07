@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "papergraph"
-version = "0.1.3"
+version = "0.1.4"
 description = "Format-only validator + static force-directed viewer for paper evidence graphs"
 readme = "README.md"
 license = { text = "Apache-2.0" }

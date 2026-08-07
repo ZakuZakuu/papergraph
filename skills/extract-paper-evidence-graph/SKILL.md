@@ -24,7 +24,7 @@ exists and report its version. Then tell the user exactly what setup is needed
 and ask for confirmation. The default, lowest-impact proposal is:
 
 > PaperGraph needs a local CLI to validate and build the graph. I found Python
-> `<version>` and can download the pinned, zero-install `papergraph-v0.1.3.pyz`
+> `<version>` and can download the pinned, zero-install `papergraph-v0.1.4.pyz`
 > into `<workspace>/.papergraph/`. This does not modify system Python or install
 > dependencies. Shall I use that location?
 
@@ -38,12 +38,12 @@ After approval, download the pinned zero-install release bundle when it is the
 chosen setup:
 
 ```sh
-if [ ! -f .papergraph/papergraph-v0.1.3.pyz ]; then
+if [ ! -f .papergraph/papergraph-v0.1.4.pyz ]; then
   mkdir -p .papergraph
-  curl -fsSL https://github.com/ZakuZakuu/papergraph/releases/download/v0.1.3/papergraph.pyz \
-    -o .papergraph/papergraph-v0.1.3.pyz
+  curl -fsSL https://github.com/ZakuZakuu/papergraph/releases/download/v0.1.4/papergraph.pyz \
+    -o .papergraph/papergraph-v0.1.4.pyz
 fi
-python3 .papergraph/papergraph-v0.1.3.pyz --help
+python3 .papergraph/papergraph-v0.1.4.pyz --help
 ```
 
 Use the working command established here for final validation and, when
