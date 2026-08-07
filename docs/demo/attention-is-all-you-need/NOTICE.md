@@ -16,6 +16,11 @@ evidence-graph interface. It contains a machine-generated graph, structured
 measurements, and selected short quotations from the source paper. It does not
 include the source PDF, its figures, or a substitute for the original paper.
 
+This demo was generated through the PaperGraph skill and CLI v0.1.4 in a GPT Sol
+web session. The bundled graph passed the PaperGraph format validator with zero
+errors; that validation does not certify the semantic correctness of every
+extracted claim or measurement.
+
 The graph is not authored, reviewed, endorsed, or maintained by the paper's
 authors, their institutions, NeurIPS, or any rights holder. It is not an
 authoritative summary of the paper and may contain extraction errors or
