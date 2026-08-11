@@ -54,7 +54,7 @@ extract and visualize an evidence graph for the paper provided below.
 | --- | --- |
 | **抽取 skill** | 指导 Agent 完成覆盖计划、基于引文的抽取、自检，以及最终 CLI 校验门槛。 |
 | **PaperGraph CLI** | 校验 JSON 契约并组装可移植的查看器。它没有运行时依赖，也可以通过带版本号的 `.pyz` bundle 运行。 |
-| **静态查看器** | 在本地浏览器中打开生成的图谱，提供以 Claim 为起点的阅读、provenance route、Compact/Full Result 视图和可追溯检查。 |
+| **静态查看器** | 在本地浏览器中打开生成的图谱，提供以 Claim 为起点的阅读、provenance route、Compact/Full Result 视图、可追溯检查，以及不翻译原文引文的可选中文显示层。 |
 
 仓库也遵循这套结构：`skills/` 存放抽取指令，`src/papergraph/` 存放 CLI 及内置查看器，`tests/` 保护契约和打包行为。
 
@@ -79,6 +79,9 @@ python3 papergraph.pyz build --graph graph.json --coverage coverage-plan.json --
 papergraph validate --graph graph.json --coverage coverage-plan.json --source paper.json
 papergraph build --graph graph.json --coverage coverage-plan.json --source paper.json --out ./viewer-out
 ```
+
+如果抽取结果包含标准中文显示 sidecar，可以加上 `--locales ./locales`。
+它只改变界面和展示标签；原文引文、数字、单位、公式和定位信息保持不变。
 
 用任意现代浏览器直接打开 `viewer-out/index.standalone.html` 即可。它是一个自包含 HTML 文件，不需要服务器、CDN、字体下载或任何网络请求。
 

@@ -24,7 +24,7 @@ exists and report its version. Then tell the user exactly what setup is needed
 and ask for confirmation. The default, lowest-impact proposal is:
 
 > PaperGraph needs a local CLI to validate and build the graph. I found Python
-> `<version>` and can download the pinned, zero-install `papergraph-v0.1.4.pyz`
+> `<version>` and can download the pinned, zero-install `papergraph-v0.1.6.pyz`
 > into `<workspace>/.papergraph/`. This does not modify system Python or install
 > dependencies. Shall I use that location?
 
@@ -38,12 +38,12 @@ After approval, download the pinned zero-install release bundle when it is the
 chosen setup:
 
 ```sh
-if [ ! -f .papergraph/papergraph-v0.1.4.pyz ]; then
+if [ ! -f .papergraph/papergraph-v0.1.6.pyz ]; then
   mkdir -p .papergraph
-  curl -fsSL https://github.com/ZakuZakuu/papergraph/releases/download/v0.1.4/papergraph.pyz \
-    -o .papergraph/papergraph-v0.1.4.pyz
+  curl -fsSL https://github.com/ZakuZakuu/papergraph/releases/download/v0.1.6/papergraph.pyz \
+    -o .papergraph/papergraph-v0.1.6.pyz
 fi
-python3 .papergraph/papergraph-v0.1.4.pyz --help
+python3 .papergraph/papergraph-v0.1.6.pyz --help
 ```
 
 Use the working command established here for final validation and, when
@@ -58,6 +58,7 @@ Read these before extraction:
 
 1. `references/graph-contract.md` for the output model.
 2. `references/extraction-method.md` for the full extraction procedure.
+3. `references/localization.md` for the required Chinese display-text sidecar.
 
 Read `references/examples.md` before resolving an ambiguous edge, result
 granularity, multi-input route, or gap. Read
@@ -91,9 +92,12 @@ Write all three beside the requested output location:
 - `coverage-plan.json`
 - `graph.json`
 - `extraction-report.md`
+- `locales/zh-CN.json`
 
 If no output location is given, create `paper-evidence-graph/` in the current
-workspace. Do not substitute prose for these files.
+workspace. Do not substitute prose for these files. The graph remains the
+canonical artifact; the locale file is a display-only sidecar keyed by stable
+graph IDs.
 
 ## Non-Negotiable Invariants
 
@@ -247,7 +251,28 @@ As part of the review, build a Gap-to-route incidence check: a Gap must appear
 on every downstream route affected by its position, not merely one route for
 the Result.
 
-### 7. Finalize
+### 7. Generate the Chinese Display Sidecar
+
+After the graph passes its bounded self-review, run one context-aware
+localization pass using the same authoritative paper representation. Produce
+`locales/zh-CN.json` using the format in `references/localization.md`.
+
+Translate display text for Claims, Results, Procedures, Configurations, Gaps,
+Measurements, contribution-group titles, and the paper-level reading summary.
+Keep node IDs, metric values, raw numeric tokens, units, formulas, table
+locators, page numbers, and provenance identifiers unchanged. Never translate
+evidence quotes: the Viewer must show the paper's original wording verbatim.
+Do not invent a translation for an absent field; omit it and let the Viewer
+fall back to English.
+
+The sidecar must be generated from the final graph and include its canonical
+SHA-256 digest. Validate the sidecar before building the Viewer. A translation
+failure must not invalidate an otherwise valid graph: record the failed locale
+pass and its reason in `extraction-report.md`, keep the graph artifacts, and
+report that the Viewer will fall back to English. Do not silently ship a stale
+sidecar from another graph.
+
+### 8. Finalize
 
 Write `graph.json` exactly as specified by the graph contract. Write
 `extraction-report.md` with:
@@ -257,6 +282,7 @@ Write `graph.json` exactly as specified by the graph contract. Write
 - counts by node, edge, assertion level, result region, measurement, and Gap;
 - unresolved ambiguities;
 - self-review corrections;
+- localization status, locale files, and any fallback reason;
 - whether the extraction stopped cleanly.
 
 Run the CLI command established by the required gate:
@@ -296,7 +322,7 @@ is unreadable, incomplete, or lacks stable access to a required result region.
 Only after final validation succeeds:
 
 ```sh
-<papergraph-command> build --graph graph.json --coverage coverage-plan.json --source <authoritative-source> --out ./viewer-out
+<papergraph-command> build --graph graph.json --coverage coverage-plan.json --source <authoritative-source> --locales ./locales --out ./viewer-out
 ```
 
 Open `./viewer-out/index.standalone.html` in a browser. No server or Python is

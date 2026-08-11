@@ -33,6 +33,7 @@ from pathlib import Path
 from typing import Any, Sequence
 
 from papergraph._resources import read_viewer_asset
+from papergraph.localization import LocalizationError, load_localizations
 from papergraph.report import LintReport
 from papergraph.source import Source
 from papergraph.validator import validate
@@ -56,6 +57,7 @@ VIEWER_STANDALONE_FILE = "index.standalone.html"
 VIEWER_APP_FILE = "app.js"
 VIEWER_STYLES_FILE = "styles.css"
 VIEWER_MANIFEST_FILE = "manifest.json"
+VIEWER_LOCALES_DIR = "locales"
 
 # The real viewer assets (Issue 04) ship inside the package as data files, read
 # via importlib.resources (papergraph._resources) so a .pyz zipapp works too.
@@ -172,7 +174,8 @@ def _js_safe(payload: str) -> str:
 
 
 def _standalone_html(
-    graph: Any, coverage: Any, source_json: Any
+    graph: Any, coverage: Any, source_json: Any,
+    localizations: dict[str, dict[str, Any]] | None = None,
 ) -> str:
     """Build a single self-contained HTML file (no server, no external refs).
 
@@ -186,7 +189,12 @@ def _standalone_html(
     styles = _read_viewer_asset(VIEWER_STYLES_FILE)
     app = _read_viewer_asset(VIEWER_APP_FILE)
 
-    data = {"graph": graph, "coverage": coverage, "source": source_json}
+    data = {
+        "graph": graph,
+        "coverage": coverage,
+        "source": source_json,
+        "locales": localizations or {},
+    }
     data_json = _js_safe(json.dumps(data, ensure_ascii=False))
 
     # Inline the stylesheet in place of the external <link>.
@@ -212,6 +220,7 @@ def render_to_dir(
     graph_path: str,
     coverage_path: str | None,
     source_path: str | None,
+    locales_dir: str | Path | None = None,
 ) -> Path:
     """Validate then materialise the (stub) viewer directory; return its path.
 
@@ -220,6 +229,10 @@ def render_to_dir(
     behind for a bad graph. Copies the validated inputs verbatim (never mutates).
     """
     _require_valid(graph, coverage, source)
+    try:
+        localizations = load_localizations(locales_dir, graph)
+    except LocalizationError as exc:
+        raise CliError(EXIT_USAGE, str(exc)) from exc
 
     out = Path(out_dir)
     data_dir = out / VIEWER_DATA_DIR
@@ -234,6 +247,18 @@ def render_to_dir(
         shutil.copyfile(source_path, data_dir / VIEWER_SOURCE_FILE)
         data_files["source"] = VIEWER_SOURCE_FILE
 
+    locale_files: dict[str, str] = {}
+    if localizations:
+        locale_out = data_dir / VIEWER_LOCALES_DIR
+        locale_out.mkdir(parents=True, exist_ok=True)
+        for locale, payload in localizations.items():
+            filename = f"{locale}.json"
+            (locale_out / filename).write_text(
+                json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+            locale_files[locale] = f"{VIEWER_LOCALES_DIR}/{filename}"
+
     manifest = {
         "generator": f"{PROG} render",
         "stub": False,
@@ -242,6 +267,7 @@ def render_to_dir(
         "format_version": (graph or {}).get("format_version") if isinstance(graph, dict) else None,
         "data_dir": VIEWER_DATA_DIR,
         "data_files": data_files,
+        "locale_files": locale_files,
     }
     (out / VIEWER_MANIFEST_FILE).write_text(
         json.dumps(manifest, ensure_ascii=True, indent=2, sort_keys=True) + "\n",
@@ -264,7 +290,7 @@ def render_to_dir(
     # provenance. Result: the standalone stays lean and provably free of any
     # remote reference.
     (out / VIEWER_STANDALONE_FILE).write_text(
-        _standalone_html(graph, coverage, None), encoding="utf-8"
+        _standalone_html(graph, coverage, None, localizations), encoding="utf-8"
     )
     return out
 
@@ -284,6 +310,7 @@ def resolve_serve_dir(args: argparse.Namespace) -> Path:
         graph_path=args.graph,
         coverage_path=getattr(args, "coverage", None),
         source_path=getattr(args, "source", None),
+        locales_dir=getattr(args, "locales", None),
     )
 
 
@@ -310,6 +337,7 @@ def _cmd_render(args: argparse.Namespace) -> int:
         graph_path=args.graph,
         coverage_path=getattr(args, "coverage", None),
         source_path=getattr(args, "source", None),
+        locales_dir=getattr(args, "locales", None),
     )
     print(
         f"{PROG} render\n  out: {out}\n"
@@ -362,6 +390,13 @@ def _add_common_io(sub: argparse.ArgumentParser, *, source_required: bool = Fals
     )
 
 
+def _add_locales_io(sub: argparse.ArgumentParser) -> None:
+    sub.add_argument(
+        "--locales", default=None,
+        help="directory containing validated localization JSON sidecars (optional)",
+    )
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog=PROG,
@@ -376,16 +411,19 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_render = subs.add_parser("render", help="validate then emit a (stub) static viewer directory")
     _add_common_io(p_render)
+    _add_locales_io(p_render)
     p_render.add_argument("--out", required=True, help="output viewer directory")
     p_render.set_defaults(func=_cmd_render)
 
     p_build = subs.add_parser("build", help="validate + render in one step")
     _add_common_io(p_build)
+    _add_locales_io(p_build)
     p_build.add_argument("--out", required=True, help="output viewer directory")
     p_build.set_defaults(func=_cmd_build)
 
     p_serve = subs.add_parser("serve", help="validate + render, then serve locally")
     _add_common_io(p_serve)
+    _add_locales_io(p_serve)
     p_serve.add_argument("--out", default=None, help="render directory to serve (default: a temp dir)")
     p_serve.add_argument("--port", type=int, default=5839, help="port to serve on (default: 5839)")
     p_serve.set_defaults(func=_cmd_serve)

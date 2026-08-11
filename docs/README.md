@@ -20,3 +20,8 @@ directory, where each demo has its own input, run, and acceptance record.
 `src/papergraph/viewer/` is the only source for viewer code. `papergraph build`
 copies those bundled assets verbatim into an output directory. A viewer under
 `.scratch/` is a generated artifact, never a release source.
+
+Localization sidecars are generated extraction artifacts under `locales/` and
+are passed explicitly with `papergraph build --locales ./locales`. They are
+validated against the graph digest and never replace the English graph or its
+source quotations.

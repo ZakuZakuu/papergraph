@@ -17,8 +17,9 @@ measurements, and selected short quotations from the source paper. It does not
 include the source PDF, its figures, or a substitute for the original paper.
 
 The bundled graph was generated through the PaperGraph skill and CLI v0.1.4 in
-a GPT Sol web session; its standalone viewer was rebuilt with CLI v0.1.5. The
-bundled graph passed the PaperGraph format validator with zero errors; that
+a GPT Sol web session; its standalone viewer was rebuilt with the PaperGraph
+v0.1.6 development build. The bundled graph passed the PaperGraph format
+validator with zero errors; that
 validation does not certify the semantic correctness of every extracted claim
 or measurement.
 

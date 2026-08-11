@@ -17,11 +17,15 @@
       <span class="sub">evidence-graph viewer</span>
     </div>
     <span class="paper" id="pg-paper"></span>
-    <div class="view-switch" role="group" aria-label="Graph view">
-      <button id="pg-mode-compact" class="active" type="button" aria-pressed="true">Compact</button>
-      <button id="pg-mode-full" type="button" aria-pressed="false">Full</button>
+    <div class="view-switch" role="group" aria-label="Graph view" data-i18n-aria="graphView">
+      <button id="pg-mode-compact" class="active" type="button" aria-pressed="true" data-i18n="compact">Compact</button>
+      <button id="pg-mode-full" type="button" aria-pressed="false" data-i18n="full">Full</button>
     </div>
-    <a class="icon-btn" id="pg-github" href="https://github.com/ZakuZakuu/papergraph" target="_blank" rel="noopener noreferrer" title="View on GitHub" aria-label="View on GitHub">
+    <div class="language-switch" role="group" aria-label="Language" data-i18n-aria="language">
+      <button id="pg-lang-zh" type="button" aria-pressed="false" data-i18n="languageChinese">中</button>
+      <button id="pg-lang-en" class="active" type="button" aria-pressed="true" data-i18n="languageEnglish">EN</button>
+    </div>
+    <a class="icon-btn" id="pg-github" href="https://github.com/ZakuZakuu/papergraph" target="_blank" rel="noopener noreferrer" title="View on GitHub" aria-label="View on GitHub" data-i18n-title="viewGithub" data-i18n-aria="viewGithub">
       <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
         <path d="M12 .5C5.73.5.75 5.48.75 11.75c0 5.02 3.26 9.28 7.78 10.78.57.1.78-.25.78-.55
           0-.27-.01-1.16-.02-2.11-3.17.69-3.84-1.35-3.84-1.35-.52-1.32-1.26-1.67-1.26-1.67-1.03-.7.08-.69.08-.69
@@ -41,94 +45,94 @@
 
   <div id="pg-rail">
     <section class="card paper-overview">
-      <h2>Paper</h2>
+      <h2 data-i18n="paper">Paper</h2>
       <div class="paper-summary" id="pg-paper-summary"></div>
       <div class="reading-basis" id="pg-reading-basis"></div>
       <div class="reading-stats" id="pg-reading-stats"></div>
     </section>
     <div class="card">
-      <input class="search" id="pg-search" placeholder="search nodes…" autocomplete="off" spellcheck="false">
+      <input class="search" id="pg-search" placeholder="search nodes…" data-i18n-placeholder="searchPlaceholder" autocomplete="off" spellcheck="false">
     </div>
     <section class="card" id="pg-core-claims">
-      <h2>Core claims</h2>
+      <h2 data-i18n="coreClaims">Core claims</h2>
       <div class="reading-outline" id="pg-outline"></div>
     </section>
     <details class="card introduces" id="pg-introduces">
-      <summary>What the paper introduces</summary>
+      <summary data-i18n="introduces">What the paper introduces</summary>
       <div id="pg-structural"></div>
     </details>
     <details class="card introduces questions-card" id="pg-open-questions-card">
-      <summary>Open questions <span class="section-count" id="pg-open-questions-count"></span></summary>
+      <summary><span data-i18n="openQuestions">Open questions</span> <span class="section-count" id="pg-open-questions-count"></span></summary>
       <div class="open-questions" id="pg-open-questions"></div>
     </details>
     <div class="card">
       <div class="card-head">
-        <h2>Categories</h2>
+        <h2 data-i18n="categories">Categories</h2>
         <div class="head-actions">
-          <button type="button" id="pg-legend-all">All</button>
-          <button type="button" id="pg-legend-none">None</button>
+          <button type="button" id="pg-legend-all" data-i18n="all">All</button>
+          <button type="button" id="pg-legend-none" data-i18n="none">None</button>
         </div>
       </div>
       <div class="legend" id="pg-legend"></div>
       <div class="graph-stats full-only">
-        <h2>Graph stats</h2>
+        <h2 data-i18n="graphStats">Graph stats</h2>
         <div class="stats" id="pg-stats"></div>
       </div>
     </div>
   </div>
   <div id="pg-rail-resizer" role="separator" tabindex="0"
-    aria-label="Resize sidebar" aria-orientation="vertical"
+    aria-label="Resize sidebar" data-i18n-aria="resizeSidebar" aria-orientation="vertical"
     aria-valuemin="320" aria-valuemax="600" aria-valuenow="410"></div>
 
   <div id="pg-claim-browser" class="detail-panel claim-panel">
     <div class="ihead">
-      <button class="iclose" id="pg-claim-close" title="Close claim browser" aria-label="Close claim browser">✕</button>
+      <button class="iclose" id="pg-claim-close" title="Close claim browser" aria-label="Close claim browser" data-i18n-title="closeClaim" data-i18n-aria="closeClaim">✕</button>
       <div id="pg-claim-head"></div>
     </div>
     <div class="ibody" id="pg-claim-body"></div>
   </div>
   <div id="pg-claim-resizer" role="separator" tabindex="0"
-    aria-label="Resize claim browser" aria-orientation="vertical"
+    aria-label="Resize claim browser" data-i18n-aria="resizeClaim" aria-orientation="vertical"
     aria-valuemin="300" aria-valuemax="520" aria-valuenow="372"></div>
 
   <div id="pg-detail-inspector" class="detail-panel node-panel">
     <div class="ihead">
-      <button class="iclose" id="pg-detail-close" title="Close inspector" aria-label="Close inspector">✕</button>
+      <button class="iclose" id="pg-detail-close" title="Close inspector" aria-label="Close inspector" data-i18n-title="closeInspector" data-i18n-aria="closeInspector">✕</button>
       <div id="pg-detail-head"></div>
     </div>
     <div class="ibody" id="pg-detail-body"></div>
   </div>
   <div id="pg-detail-resizer" role="separator" tabindex="0"
-    aria-label="Resize node inspector" aria-orientation="vertical"
+    aria-label="Resize node inspector" data-i18n-aria="resizeInspector" aria-orientation="vertical"
     aria-valuemin="300" aria-valuemax="520" aria-valuenow="372"></div>
-  <div class="claim-detail-tabs" id="pg-mobile-tabs" aria-label="Inspector view">
-    <button type="button" id="pg-tab-claim" class="active">Claim</button>
-    <button type="button" id="pg-tab-detail">Node</button>
+  <div class="claim-detail-tabs" id="pg-mobile-tabs" aria-label="Inspector view" data-i18n-aria="inspectorView">
+    <button type="button" id="pg-tab-claim" class="active" data-i18n="claim">Claim</button>
+    <button type="button" id="pg-tab-detail" data-i18n="node">Node</button>
   </div>
 
   <div id="pg-bot">
     <div class="zoom">
       <button id="pg-rail-toggle" type="button" title="Collapse sidebar"
-        aria-label="Collapse sidebar" aria-expanded="true"><span class="sidebar-glyph" aria-hidden="true"></span></button>
+        aria-label="Collapse sidebar" data-i18n-title="collapseSidebar" data-i18n-aria="collapseSidebar" aria-expanded="true"><span class="sidebar-glyph" aria-hidden="true"></span></button>
       <button id="pg-layout-reset" type="button" title="Restore default layout"
-        aria-label="Restore default layout">&#8634;</button>
+        aria-label="Restore default layout" data-i18n-title="restoreLayout" data-i18n-aria="restoreLayout">&#8634;</button>
       <button id="pg-line-guide" type="button" title="Explain line styles"
-        aria-label="Explain line styles" aria-expanded="false"><span class="line-guide-glyph" aria-hidden="true"></span></button>
-      <button id="pg-zin" title="Zoom in">+</button>
-      <button id="pg-zout" title="Zoom out">−</button>
-      <button id="pg-zfit" title="Fit / reset" style="width:auto;padding:0 8px;font-size:11px;font-family:var(--mono)">fit</button>
+        aria-label="Explain line styles" data-i18n-title="explainLines" data-i18n-aria="explainLines" aria-expanded="false"><span class="line-guide-glyph" aria-hidden="true"></span></button>
+      <button id="pg-zin" title="Zoom in" data-i18n-title="zoomIn">+</button>
+      <button id="pg-zout" title="Zoom out" data-i18n-title="zoomOut">−</button>
+      <button id="pg-zfit" title="Fit / reset" data-i18n-title="fit" style="width:auto;padding:0 8px;font-size:11px;font-family:var(--mono)">fit</button>
     </div>
     <div class="crumb" id="pg-crumb" style="display:none"></div>
-    <div class="hint"><b>drag</b> pan · <b>scroll</b> zoom · <b>click</b> a claim/result to trace its route</div>
+    <div class="hint"><b data-i18n="dragHint">drag</b> <span data-i18n="panHint">pan</span> · <b data-i18n="scrollHint">scroll</b> <span data-i18n="zoomHint">zoom</span> · <b data-i18n="clickHint">click</b> <span data-i18n="traceHint">a claim/result to trace its route</span></div>
   </div>
 
-  <aside id="pg-line-guide-popover" class="line-guide-popover" hidden aria-label="Line guide">
-    <div class="line-guide-title">Line guide</div>
-    <div class="line-guide-row"><span class="line-guide-swatch structural"></span><span>Evidence flow</span></div>
-    <div class="line-guide-row"><span class="line-guide-swatch reconstructed"></span><span>Reconstructed relation</span></div>
-    <div class="line-guide-row"><span class="line-guide-swatch support"></span><span>Result supports Claim</span></div>
-    <div class="line-guide-row"><span class="line-guide-swatch comparison"><i></i></span><span>Comparison evidence in Claim browse</span></div>
-    <div class="line-guide-row"><span class="line-guide-swatch gap"></span><span>Recorded evidence gap</span></div>
+  <aside id="pg-line-guide-popover" class="line-guide-popover" hidden aria-label="Line guide" data-i18n-aria="lineGuide">
+    <div class="line-guide-title" data-i18n="lineGuide">Line guide</div>
+    <div class="line-guide-row"><span class="line-guide-swatch structural"></span><span data-i18n="evidenceFlow">Evidence flow</span></div>
+    <div class="line-guide-row"><span class="line-guide-swatch reconstructed"></span><span data-i18n="reconstructedRelation">Reconstructed relation</span></div>
+    <div class="line-guide-row"><span class="line-guide-swatch support"></span><span data-i18n="supportsClaim">Result supports Claim</span></div>
+    <div class="line-guide-row"><span class="line-guide-swatch comparison"><i></i></span><span data-i18n="comparisonEvidence">Comparison evidence in Claim browse</span></div>
+    <div class="line-guide-row"><span class="line-guide-swatch gap"></span><span data-i18n="recordedGap">Recorded evidence gap</span></div>
   </aside>
 
   <div id="pg-tip"></div>

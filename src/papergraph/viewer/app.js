@@ -6,6 +6,7 @@
 "use strict";
   // ---- theme (light/dark): applied immediately, independent of data load ----
   var THEME_KEY = "papergraph-theme";
+  var themeLabeler = null;
   function systemPrefersLight(){
     return !!(window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches);
   }
@@ -16,7 +17,7 @@
     var btn = document.getElementById("pg-theme");
     if(btn){
       btn.classList.toggle("on", t==="light");
-      var label = t==="light" ? "Switch to dark theme" : "Switch to light theme";
+      var label = themeLabeler ? themeLabeler(t) : (t==="light" ? "Switch to dark theme" : "Switch to light theme");
       btn.setAttribute("aria-label", label); btn.title = label;
     }
   }
@@ -37,18 +38,223 @@
     return fetch("manifest.json").then(function(r){ return r.json(); }).then(function(manifest){
       var dir = manifest.data_dir || "data";
       var files = manifest.data_files || {};
-      var out = { graph:null, coverage:null, source:null };
+      var out = { graph:null, coverage:null, source:null, locales:{} };
       var chain = fetch(dir + "/" + files.graph).then(function(r){ return r.json(); }).then(function(g){ out.graph = g; });
       if (files.coverage) chain = chain.then(function(){
         return fetch(dir + "/" + files.coverage).then(function(r){ return r.json(); }).then(function(c){ out.coverage = c; }); });
+      var localeFiles = manifest.locale_files || {};
+      Object.keys(localeFiles).forEach(function(locale){
+        chain = chain.then(function(){
+          return fetch(dir + "/" + localeFiles[locale]).then(function(r){ return r.json(); })
+            .then(function(payload){ out.locales[locale] = payload; });
+        });
+      });
       return chain.then(function(){ return out; });
     });
   }
 
   loadData().then(start).catch(function(err){ if (window.console) console.error("papergraph: data load failed", err); });
 
-  function start(PG_DATA){
+function start(PG_DATA){
 const G = PG_DATA.graph || PG_DATA;
+const LOCALE_KEY = "papergraph-locale";
+const LOCALE_DATA = PG_DATA.locales || {};
+const UI = {
+  en: {
+    paper:"Paper", searchPlaceholder:"search nodes…", coreClaims:"Core claims",
+    introduces:"What the paper introduces", openQuestions:"Open questions",
+    categories:"Categories", all:"All", none:"None", graphStats:"Graph stats",
+    nodes:"nodes", results:"results", edges:"edges", routes:"routes", gaps:"gaps",
+    detailedGaps:"detailed gaps", coreGaps:"Core gaps", detailGaps:"Detailed gaps",
+    showDetails:"Show detailed gaps", hideDetails:"Hide detailed gaps",
+    compact:"Compact", full:"Full", graphView:"Graph view", language:"Language", inspectorView:"Inspector view", claim:"Claim",
+    node:"Node", papergraph:"evidence-graph viewer", lineGuide:"Line guide",
+    evidenceFlow:"Evidence flow", reconstructedRelation:"Reconstructed relation",
+    supportsClaim:"Result supports Claim", comparisonEvidence:"Comparison evidence in Claim browse",
+    recordedGap:"Recorded evidence gap", collapseSidebar:"Collapse sidebar",
+    expandSidebar:"Expand sidebar", restoreLayout:"Restore default layout",
+    explainLines:"Explain line styles", zoomIn:"Zoom in", zoomOut:"Zoom out",
+    fit:"Fit / reset", dragHint:"drag", panHint:"pan", scrollHint:"scroll",
+    zoomHint:"zoom", clickHint:"click", traceHint:"a claim/result to trace its route",
+    switchToDark:"Switch to dark theme", switchToLight:"Switch to light theme",
+    viewGithub:"View on GitHub", resizeSidebar:"Resize sidebar",
+    resizeInspector:"Resize node inspector", resizeClaim:"Resize claim browser",
+    closeInspector:"Close inspector", closeClaim:"Close claim browser",
+    evidenceGap:"Evidence gap", missingEvidence:"Missing evidence",
+    resultGroup:"Result group", resultCount:"results", coreClaim:"Core claims",
+    supportingResult:"supporting result", supportingResults:"supporting results",
+    openGap:"open gap", openGaps:"open gaps", noSupportingResult:"no supporting result",
+    takeaway:"Takeaway", keyEvidence:"Key evidence", evidenceRoutes:"Evidence routes",
+    measuredSupport:"Measured support", statedIn:"Stated in", statedInPaper:"Stated in (paper)",
+    connections:"Connections", evidence:"Evidence", measurements:"Measurements",
+    declaredMeasurements:"Declared measurements", comparativeEvidence:"Comparative evidence",
+    measurementNote:"Measurements explicitly attached to this support edge.",
+    comparisonNote:"Only measurements explicitly attached to this support edge are shown. The broader paper statement is listed separately.",
+    result:"Result", metric:"Metric", value:"Value", declaredComparison:"Declared comparison result",
+    declaredComparisons:"Declared comparison results", evidenceRoutesCaption:"Claim → supporting results → declared provenance",
+    resultRouteCaption:"Result → declared upstream paths and branches", declaredRoutes:"Declared routes",
+    nodesCount:"nodes", routeCount:"routes", additionalGaps:"Additional gaps", relationship:"relationship", relationships:"relationships",
+    unsupportedInPaper:"Unsupported in paper", noSourceEvidence:"No source evidence recorded for this claim.",
+    noRecordedGaps:"No recorded evidence gaps.", sourceText:"Source text", from:"from",
+    explicit:"explicit", reconstructed:"reconstructed", route:"route", openGapAction:"open gap ▸",
+    missingEvidenceLower:"missing evidence", output:"output", configuration:"configuration",
+    procedure:"procedure", additionalInputs:"additional inputs", declaredPath:"Declared path (terminal not in path)",
+    declaredConfiguration:"Declared configuration", declaredProcedures:"Declared procedures",
+    declaredOutputs:"Declared outputs", declaredGaps:"Declared gaps", claimBrowser:"Claim browser", openQuestion:"Open question",
+    headlineClaim:"Headline claim", nonHeadlineClaim:"non-headline claim", readingTakeaway:"Reading takeaway",
+    featuredEvidence:"Featured evidence", missingData:"Missing evidence", nodeKindArtifact:"Artifact",
+    nodeKindProcedure:"Procedure", nodeKindConfiguration:"Configuration", nodeKindResult:"Result",
+    nodeKindClaim:"Claim", nodeKindGap:"Gap", languageChinese:"中", languageEnglish:"EN",
+    affects:"Affects", expected:"expected", searched:"searched", unassignedLocation:"Unassigned location",
+    constituentRelationships:"Constituent relationships", whyThisLink:"Why this link", reconstructedNote:"Reconstructed — inferred from the paper's structure, not stated verbatim.", collapse:"Collapse", expand:"Expand",
+    terminalNotInPath:"Declared path (terminal not in path)", supportingResultsGroup:"Supporting results", gapGroup:"Open gaps",
+    selectedSupportRelation:"joins the selected support relation", comparisonEvidenceLower:"comparison evidence",
+    sourceTextTitle:"Source text"
+  },
+  "zh-CN": {
+    paper:"论文", searchPlaceholder:"搜索节点…", coreClaims:"核心 Claim",
+    introduces:"论文提出了什么", openQuestions:"开放问题", categories:"类别",
+    all:"全部", none:"无", graphStats:"图谱统计", nodes:"节点", edges:"边", routes:"路径",
+    gaps:"缺口", detailedGaps:"细节缺口", coreGaps:"核心缺口", detailGaps:"细节缺口",
+    showDetails:"显示细节缺口", hideDetails:"隐藏细节缺口", compact:"紧凑", full:"完整",
+    graphView:"图谱视图", language:"语言", inspectorView:"Inspector 视图", claim:"Claim", node:"节点", results:"个 Result", papergraph:"证据图谱查看器",
+    lineGuide:"线条图例", evidenceFlow:"证据流", reconstructedRelation:"重建关系",
+    supportsClaim:"Result 支持 Claim", comparisonEvidence:"Claim 浏览中的比较证据",
+    recordedGap:"记录的证据缺口", collapseSidebar:"收起侧边栏", expandSidebar:"展开侧边栏",
+    restoreLayout:"恢复默认排布", explainLines:"解释线条样式", zoomIn:"放大", zoomOut:"缩小",
+    fit:"适应视图", dragHint:"拖拽", panHint:"平移", scrollHint:"滚轮", zoomHint:"缩放",
+    clickHint:"点击", traceHint:"Claim/Result 查看证据路径", switchToDark:"切换深色模式",
+    switchToLight:"切换浅色模式", viewGithub:"查看 GitHub", resizeSidebar:"调整侧边栏宽度",
+    resizeInspector:"调整节点 Inspector 宽度", resizeClaim:"调整 Claim 浏览器宽度",
+    closeInspector:"关闭 Inspector", closeClaim:"关闭 Claim 浏览器", evidenceGap:"证据缺口",
+    missingEvidence:"缺少证据", resultGroup:"Result 聚合", resultCount:"个 Result",
+    coreClaim:"核心 Claim", supportingResult:"条支持 Result", supportingResults:"条支持 Result",
+    openGap:"个开放缺口", openGaps:"个开放缺口", noSupportingResult:"没有支持 Result",
+    takeaway:"结论摘要", keyEvidence:"关键证据", evidenceRoutes:"证据路径", measuredSupport:"测量支持",
+    statedIn:"论文中陈述于", statedInPaper:"论文陈述", connections:"连接", evidence:"证据",
+    measurements:"测量值", declaredMeasurements:"已声明的测量值", comparativeEvidence:"比较证据",
+    measurementNote:"仅显示明确挂接到这条支持边的测量值。", comparisonNote:"仅显示明确挂接到这条支持边的测量值，更宽泛的论文陈述会单独列出。",
+    result:"Result", metric:"指标", value:"数值", declaredComparison:"已声明的比较 Result",
+    declaredComparisons:"已声明的比较 Result", evidenceRoutesCaption:"Claim → 支持 Result → 已声明的证据路径",
+    resultRouteCaption:"Result → 已声明的上游路径和分支", declaredRoutes:"已声明路径", nodesCount:"个节点",
+    routeCount:"条路径", additionalGaps:"其他缺口", relationship:"条关系", relationships:"条关系", unsupportedInPaper:"论文中没有得到支持",
+    noSourceEvidence:"没有记录来源证据。", noRecordedGaps:"没有记录的证据缺口。", sourceText:"原文",
+    from:"来自", explicit:"明确", reconstructed:"重建", route:"路径", openGapAction:"打开缺口 ▸",
+    missingEvidenceLower:"缺少证据", output:"输出", configuration:"配置", procedure:"过程",
+    additionalInputs:"额外输入", declaredPath:"已声明路径（终点未包含在路径中）",
+    declaredConfiguration:"已声明配置", declaredProcedures:"已声明过程", declaredOutputs:"已声明输出",
+    declaredGaps:"已声明缺口", claimBrowser:"Claim 浏览器", openQuestion:"开放问题", headlineClaim:"头条 Claim",
+    nonHeadlineClaim:"非头条 Claim", readingTakeaway:"阅读摘要", featuredEvidence:"关键证据",
+    missingData:"缺少证据", nodeKindArtifact:"Artifact", nodeKindProcedure:"Procedure",
+    nodeKindConfiguration:"Configuration", nodeKindResult:"Result", nodeKindClaim:"Claim", nodeKindGap:"Gap",
+    languageChinese:"中", languageEnglish:"EN", affects:"影响", expected:"预期类型", searched:"已搜索位置",
+    unassignedLocation:"未分配位置", constituentRelationships:"组成关系", whyThisLink:"关系原因", collapse:"收起", expand:"展开",
+    reconstructedNote:"重建关系：根据论文结构推断，并非原文逐字陈述。", terminalNotInPath:"已声明路径（终点未包含在路径中）",
+    supportingResultsGroup:"支持的 Result", gapGroup:"开放缺口", selectedSupportRelation:"加入当前支持关系",
+    comparisonEvidenceLower:"比较证据", sourceTextTitle:"原文"
+  }
+};
+let activeLocale = "en";
+function ui(key){
+  const table=UI[activeLocale]||UI.en;
+  return table[key]!==undefined?table[key]:(UI.en[key]!==undefined?UI.en[key]:key);
+}
+function savedLocale(){ try{ return localStorage.getItem(LOCALE_KEY); }catch(e){ return null; } }
+function initialLocale(){
+  const saved=savedLocale(); if(saved&&UI[saved])return saved;
+  return (navigator.language||"").toLowerCase().startsWith("zh")?"zh-CN":"en";
+}
+activeLocale=initialLocale();
+function localePayload(){ return LOCALE_DATA[activeLocale]||{}; }
+function localized(section,id,key,fallback){
+  const item=localePayload()[section]&&localePayload()[section][id];
+  return item&&typeof item[key]==="string"&&item[key].trim()?item[key]:fallback;
+}
+function localizedPaper(key,fallback){
+  const paper=localePayload().paper;
+  return paper&&typeof paper[key]==="string"&&paper[key].trim()?paper[key]:fallback;
+}
+function nodeLabel(node){ return localized("nodes",node.id,"label",node.label||node.id); }
+function groupTitle(group){ return localized("groups",group.id,"title",group.title||group.id); }
+function gapText(gap,key,fallback){ return localized("gaps",gap.id,key,fallback); }
+function measurementLabel(measurement){ return localized("measurements",measurement.id,"label",measurement.metric||measurement.id); }
+function measurementField(measurement,key,fallback){ return localized("measurements",measurement.id,key,fallback); }
+const GAP_CATEGORY_LABELS = {
+  missing_artifact:["Missing artifact","缺少 Artifact"],
+  missing_producer:["Missing producer","缺少产出过程"],
+  underspecified_configuration:["Underspecified configuration","配置未充分说明"],
+  missing_evaluator:["Missing evaluator","缺少评估器"],
+  unconnected_result:["Unconnected result","未连接的 Result"],
+  unsupported_claim:["Unsupported claim","未获支持的 Claim"],
+  ambiguous_mapping:["Ambiguous mapping","映射不明确"],
+  other:["Other gap","其他缺口"]
+};
+function categoryLabel(category){
+  const pair=GAP_CATEGORY_LABELS[category];
+  if(!pair)return category||ui("missingEvidence");
+  return activeLocale==="zh-CN"?pair[1]:pair[0];
+}
+function kindLabel(kind){
+  const key={artifact:"nodeKindArtifact",procedure:"nodeKindProcedure",configuration:"nodeKindConfiguration",
+    result:"nodeKindResult",claim:"nodeKindClaim",gap:"nodeKindGap",result_group:"resultGroup"}[kind];
+  return key?ui(key):kind||"";
+}
+function countText(n,oneKey,manyKey){ return String(n)+" "+ui(n===1?oneKey:manyKey); }
+function nodeDisplayLabel(node){
+  if(!node)return "";
+  return node.gap?gapText(node.ref,"question",node.label||node.id):node.label||nodeLabel(node.ref||node);
+}
+function gapQuestion(gap){
+  return gapText(gap,"question",gap.missing_content||ui("missingEvidence"));
+}
+function structuralLabel(category,fallback){
+  const keys={
+    "unlinked-route":"terminalNotInPath", "configuration":"declaredConfiguration",
+    "procedure":"declaredProcedures", "artifact":"declaredOutputs",
+    "additional-input":"additionalInputs", "gap":"declaredGaps",
+    "result-group":"supportingResultsGroup", "supporting-results":"supportingResultsGroup",
+    "gap-group":"gapGroup", "open-gaps":"gapGroup"
+  };
+  return keys[category]?ui(keys[category]):fallback;
+}
+function applyLocaleStatic(){
+  document.documentElement.lang=activeLocale;
+  themeLabeler=function(theme){ return theme==="light"?ui("switchToDark"):ui("switchToLight"); };
+  applyTheme(document.documentElement.getAttribute("data-theme")||currentTheme());
+  document.querySelectorAll("[data-i18n]").forEach(el=>{ el.textContent=ui(el.getAttribute("data-i18n")); });
+  document.querySelectorAll("[data-i18n-placeholder]").forEach(el=>{
+    el.placeholder=ui(el.getAttribute("data-i18n-placeholder"));
+  });
+  document.querySelectorAll("[data-i18n-title]").forEach(el=>{
+    el.title=ui(el.getAttribute("data-i18n-title"));
+  });
+  document.querySelectorAll("[data-i18n-aria]").forEach(el=>{
+    el.setAttribute("aria-label",ui(el.getAttribute("data-i18n-aria")));
+  });
+  ["pg-lang-zh","pg-lang-en"].forEach(id=>{
+    const button=document.getElementById(id);if(!button)return;
+    const on=(id==="pg-lang-zh"?activeLocale==="zh-CN":activeLocale==="en");
+    button.classList.toggle("active",on);button.setAttribute("aria-pressed",on?"true":"false");
+  });
+}
+function setLocale(next,persist){
+  activeLocale=next==="zh-CN"?"zh-CN":"en";
+  if(persist!==false){try{localStorage.setItem(LOCALE_KEY,activeLocale);}catch(e){}}
+  applyLocaleStatic();
+  if(typeof nodes!=="undefined")nodes.forEach(n=>{
+    if(n.gap)n.label=categoryLabel(n.ref.category);
+    else if(n.ref)n.label=nodeLabel(n.ref);
+  });
+  if(typeof buildLegend==="function")buildLegend();
+  if(typeof buildReadingOutline==="function")buildReadingOutline();
+  if(typeof buildStructuralIntroductions==="function")buildStructuralIntroductions();
+  if(typeof buildReadingSummary==="function")buildReadingSummary();
+  if(typeof buildStats==="function")buildStats();
+  if(typeof renderClaimBrowser==="function"&&activeClaimId)renderClaimBrowser();
+  if(typeof renderDetailInspector==="function"&&detailSelection)renderDetailInspector();
+  if(typeof renderCrumb==="function")renderCrumb();
+  requestRender();
+}
 const REDUCED = window.matchMedia && window.matchMedia("(prefers-reduced-motion:reduce)").matches;
 
 const KIND = {
@@ -68,12 +274,14 @@ const KIND_ORDER = ["artifact","procedure","configuration","result","claim","gap
 // hues that already read fine on both a near-black and a near-white ground.
 const CANVAS_PAL = {
   dark:  {edgeExplicit:"#5b6b83", edgeReconstructed:"#4a5975", edgeFocus:"#7d90ad", support:"#bc6883", supportFocus:"#f08aa7",
-          gap:"#ff5c6c", gapFocus:"#ff6b7a", gapRGB:"255,92,108", gapGlyph:"#ff8a95", accent:"#57e0d8",
+          gap:"#ff5c6c", gapFocus:"#ff6b7a", gapRGB:"255,92,108", gapGlyph:"#ff8a95",
+          gapDetail:"#a76570", gapDetailFocus:"#d0848e", gapDetailRGB:"167,101,112", gapDetailGlyph:"#b87882", accent:"#57e0d8",
           selRing:"#eafffb", nodeStroke:"rgba(6,9,14,0.65)",
           labelFill:"#cdd8e8", labelGapFill:"#ff9aa4", labelHalo:"rgba(8,11,18,0.85)",
           pillExplicit:"#8aa0bf", pillRecon:"#8b7fd6"},
   light: {edgeExplicit:"#57657c", edgeReconstructed:"#7c8aa3", edgeFocus:"#3d4a63", support:"#ad4163", supportFocus:"#c22f5c",
-          gap:"#d33444", gapFocus:"#c22a3a", gapRGB:"211,52,68", gapGlyph:"#b3243b", accent:"#0e948c",
+          gap:"#d33444", gapFocus:"#c22a3a", gapRGB:"211,52,68", gapGlyph:"#b3243b",
+          gapDetail:"#a87980", gapDetailFocus:"#b65664", gapDetailRGB:"168,121,128", gapDetailGlyph:"#a9626d", accent:"#0e948c",
           selRing:"#12161f", nodeStroke:"rgba(10,14,20,0.32)",
           labelFill:"#28303e", labelGapFill:"#9c2436", labelHalo:"rgba(255,255,255,0.9)",
           pillExplicit:"#3f4b60", pillRecon:"#5b46b8"}
@@ -89,6 +297,14 @@ const gaps = G.gaps||[];
 const resultScans = G.result_region_scan||[];
 const routes = G.provenance_routes||[];
 const routesById = {};    routes.forEach(r=>routesById[r.id]=r);
+const claimIds = new Set(rawNodes.filter(n=>n&&n.kind==="claim").map(n=>n.id));
+const CORE_GAP_CATEGORIES = new Set(["unsupported_claim","ambiguous_mapping","unconnected_result"]);
+const gapTierById = {};
+gaps.forEach(gp=>{
+  const directClaim=(gp.affects||[]).some(id=>claimIds.has(id));
+  gapTierById[gp.id]=(CORE_GAP_CATEGORIES.has(gp.category)||directClaim)?"core":"detail";
+});
+function isDetailGap(id){ return gapTierById[id]==="detail"; }
 // headline (core) claims are declared on the contribution groups
 const groupById={}; groups.forEach(gr=>groupById[gr.id]=gr);
 const headlineClaims=new Set(); const claimGroups={};
@@ -120,8 +336,8 @@ function hasNativeReadingMap(){ return !!nativeReadingMap; }
 
 // build render-node list (real nodes + gap pseudo-nodes)
 const nodes = [];
-rawNodes.forEach(n=>nodes.push({id:n.id,kind:n.kind,label:n.label||n.id,ref:n,gap:false}));
-gaps.forEach(gp=>nodes.push({id:gp.id,kind:"gap",label:gp.question?"Missing evidence":(gp.category||"gap"),ref:gp,gap:true}));
+rawNodes.forEach(n=>nodes.push({id:n.id,kind:n.kind,label:nodeLabel(n),ref:n,gap:false}));
+gaps.forEach(gp=>nodes.push({id:gp.id,kind:"gap",label:categoryLabel(gp.category),ref:gp,gap:true}));
 const RN = {}; nodes.forEach(n=>RN[n.id]=n);
 
 // build edges: real edges + synthesized gap links
@@ -667,9 +883,11 @@ let activeClaimId=null,claimChain=null,detailSelection=null,claimCameraFitted=fa
 let hi = null;   // {nd:Set, eg:Set} of highlighted ids (route or neighbor focus); null = all lit
 let kindOff = new Set();
 let searchHit = new Set();
+const revealedDetailGaps=new Set();
 
 function visibleNode(n){
   if(!n)return false;
+  if(n.gap&&viewMode==="compact"&&isDetailGap(n.id)&&!revealedDetailGaps.has(n.id))return false;
   if(viewMode==="full") return !n.virtualType;
   if(n.virtualType==="result_group")return true;
   if(n.kind==="result"){
@@ -681,6 +899,7 @@ function visibleNode(n){
 
 function visibleEdge(e){
   if(viewMode==="full") return !e.virtualType;
+  if(e.gap&&isDetailGap(e.ref&&e.ref.id)&&!revealedDetailGaps.has(e.ref&&e.ref.id))return false;
   if(!visibleNode(RN[e.a]) || !visibleNode(RN[e.b])) return false;
   if(e.virtualType==="result_summary")return true;
   if(e.virtualType)return false;
@@ -812,15 +1031,18 @@ function draw(){
     const [x1,y1]=toScreen(p.x,p.y),[x2,y2]=toScreen(q.x,q.y);
     const lit=litEdge(e) && !kindOff.has(RN[e.a].kind) && !kindOff.has(RN[e.b].kind);
     const onSel = selEdge===e;
+    const detailGap=e.gap&&isDetailGap(e.ref&&e.ref.id);
     let col, w, dash;
-    if(e.gap){ col=P.gap; w=1.5; dash=[1.5,5]; }
+    if(e.gap){ col=detailGap?P.gapDetail:P.gap; w=detailGap?1.1:1.5; dash=[1.5,5]; }
     else if(e.level==="explicit"||e.level==="summary"){ col=e.rel==="supports"?P.support:P.edgeExplicit; w=e.rel==="supports"?1.9:1.4; dash=[]; }
     else { col=e.rel==="supports"?P.support:P.edgeReconstructed; w=e.rel==="supports"?1.7:1.2; dash=[5,5]; }
     ctx.globalAlpha = lit ? (e.gap?0.95:0.7) : 0.06;
     const summaryExpanded=summaryEdgeExpanded(e);
     if(summaryExpanded&&!onSel){ctx.globalAlpha*=0.32;w*=0.82;}
     if(onSel){col=P.accent;w=2.4;ctx.globalAlpha=1;}
-    else if(hi&&lit&&!hi.soft){col=e.gap?P.gapFocus:(e.rel==="supports"?P.supportFocus:P.edgeFocus);w+=0.5;}
+    else if(hi&&lit&&!hi.soft){
+      col=e.gap?(detailGap?P.gapDetailFocus:P.gapFocus):(e.rel==="supports"?P.supportFocus:P.edgeFocus);w+=0.5;
+    }
     ctx.strokeStyle=col; ctx.lineWidth=w; ctx.setLineDash(dash);
     if(e.a===e.b){drawSummarySelfLoop(p,col,w,dash);return;}
     // slight curve
@@ -880,6 +1102,7 @@ function draw(){
     const isSel = selNode===n;
     const isHover = hoverNode===n;
     const isSearch = searchHit.has(n.id);
+    const detailGap=n.gap&&isDetailGap(n.id);
     ctx.globalAlpha = lit ? 1 : 0.11;
     if(n.gap){
       // pulsing hollow ring
@@ -887,11 +1110,13 @@ function draw(){
       // is tracing an active route or Claim evidence chain.
       const pulse = REDUCED||!(hi&&!hi.soft)?0.75:(0.5+0.5*Math.sin(tms/420));
       ctx.beginPath(); ctx.arc(x,y,R,0,7);
-      ctx.fillStyle=`rgba(${P.gapRGB},0.10)`; ctx.fill();
+      const gapRGB=detailGap?P.gapDetailRGB:P.gapRGB;
+      const gapGlyph=detailGap?P.gapDetailGlyph:P.gapGlyph;
+      ctx.fillStyle=`rgba(${gapRGB},${detailGap?0.055:0.10})`; ctx.fill();
       ctx.lineWidth=1.8; ctx.setLineDash([3,3]);
-      ctx.strokeStyle=`rgba(${P.gapRGB},${lit?0.6+0.4*pulse:0.5})`; ctx.stroke();
+      ctx.strokeStyle=`rgba(${gapRGB},${lit?(detailGap?0.38+0.22*pulse:0.6+0.4*pulse):0.32})`; ctx.stroke();
       ctx.setLineDash([]);
-      if(lit){ ctx.fillStyle=P.gapGlyph; ctx.font="700 "+(R*1.1)+"px ui-monospace,Menlo,monospace";
+      if(lit){ ctx.fillStyle=gapGlyph; ctx.font="700 "+(R*1.1)+"px ui-monospace,Menlo,monospace";
         ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText("?",x,y+0.5); }
     } else if(n.virtualType==="result_group"){
       drawResultGroupNode(n,x,y,R,k,lit,isHover);
@@ -988,8 +1213,8 @@ cv.addEventListener("pointermove",ev=>{
   cv.classList.toggle("overnode",!!n||!!comparison);
   const tip=document.getElementById("pg-tip");
   if(n){ const k=KIND[n.kind]||KIND.result;
-    const detail=n.virtualType==="result_group"?` · ${n.resultCount} results`:"";
-    tip.innerHTML=`<span class="tk" style="color:${k.c}">${n.gap?"gap · "+(n.ref.category||""):n.kind}${detail}</span>${esc(n.label)}`;
+    const detail=n.virtualType==="result_group"?` · ${n.resultCount} ${ui("resultCount")}`:"";
+    tip.innerHTML=`<span class="tk" style="color:${k.c}">${n.gap?categoryLabel(n.ref.category):kindLabel(n.kind)}${detail}</span>${esc(n.label)}`;
     const [x,y]=toScreen(n.x,n.y); tip.style.left=x+"px"; tip.style.top=(y-n.r*cam.z)+"px"; tip.style.opacity=1;
   } else if(comparison){
     const geometry=comparisonConnectorGeometry(comparison);
@@ -1031,7 +1256,9 @@ cv.addEventListener("wheel",ev=>{ ev.preventDefault();
 /* ---------- selection actions ---------- */
 function selectNode(n){
   if(n.virtualType==="result_group"){ toggleResultGroup(n); return; }
+  if(selNode&&selNode.gap&&selNode.id!==n.id)revealedDetailGaps.delete(selNode.id);
   if(n.gap){
+    if(viewMode==="compact"&&isDetailGap(n.id))revealedDetailGaps.add(n.id);
     const questions=document.getElementById("pg-open-questions-card");
     if(questions)questions.open=true;
     requestAnimationFrame(()=>{
@@ -1095,12 +1322,14 @@ function enterClaimBrowsing(claimId){
 }
 function exitClaimBrowsing(clearDetail){
   activeClaimId=null;claimChain=null;claimExpandedResultGroups.clear();claimCameraFitted=false;
+  revealedDetailGaps.clear();
   closeClaimBrowser();
   if(clearDetail!==false){detailSelection=null;selNode=null;selEdge=null;activeRoute=null;closeDetailInspector();}
   computeHighlight();syncOutlineUI();renderCrumb();settleVisible(80);
 }
 function clearSel(){
   if(activeClaimId){exitClaimBrowsing(true);return;}
+  revealedDetailGaps.clear();
   selNode=null;selEdge=null;activeRoute=null;detailSelection=null;hi=null;
   syncOutlineUI();closeDetailInspector();renderCrumb();requestRender();
 }
@@ -1206,26 +1435,24 @@ function renderDeclaredMeasurements(edge){
   const isComparison=comparatorIds.length>0;
   const measuredResultIds=new Set(measurements.map(item=>item.node.id));
   let h=`<div class="declared-measurements${isComparison?" comparison":""}">`+
-    `<div class="declared-measurements-title">${isComparison?"Comparative evidence":"Declared measurements"}</div>`+
-    `<div class="declared-measurements-note">${isComparison
-      ?"Only measurements explicitly attached to this support edge are shown. The broader paper statement is listed separately."
-      :"Measurements explicitly attached to this support edge."}</div>`;
+    `<div class="declared-measurements-title">${isComparison?ui("comparativeEvidence"):ui("declaredMeasurements")}</div>`+
+    `<div class="declared-measurements-note">${isComparison?ui("comparisonNote"):ui("measurementNote")}</div>`;
   if(measurements.length){
-    h+=`<table class="meas declared-measurements-table"><thead><tr><th>Result</th><th>Metric</th><th>Value</th></tr></thead><tbody>`+
+    h+=`<table class="meas declared-measurements-table"><thead><tr><th>${ui("result")}</th><th>${ui("metric")}</th><th>${ui("value")}</th></tr></thead><tbody>`+
       measurements.map(({node,measurement})=>`<tr><td><button type="button" class="measurement-result" data-node="${esc(node.id)}">${esc(node.label||node.id)}</button></td>`+
-        `<td>${esc(measurement.metric)}${measurement.qualifier?`<div class="measurement-qualifier">${esc(measurement.qualifier)}</div>`:""}</td>`+
+        `<td>${esc(measurementLabel(measurement))}${measurementField(measurement,"qualifier",measurement.qualifier)?`<div class="measurement-qualifier">${esc(measurementField(measurement,"qualifier",measurement.qualifier))}</div>`:""}</td>`+
         `<td class="val">${renderMeasurementValue(measurement)}${measurement.unit?` <span class="u">${esc(measurement.unit)}</span>`:""}</td></tr>`).join("")+`</tbody></table>`;
   }
   const unmeasuredComparators=comparatorIds.filter(id=>!measuredResultIds.has(id));
   if(unmeasuredComparators.length){
-    h+=`<div class="comparison-result-links"><span>Declared comparison result${unmeasuredComparators.length===1?"":"s"}:</span>`+
+    h+=`<div class="comparison-result-links"><span>${ui("declaredComparisons")}:</span>`+
       unmeasuredComparators.map(id=>`<button type="button" class="measurement-result" data-node="${esc(id)}">${esc(RN[id].label||id)}</button>`).join("")+`</div>`;
   }
   return h+`</div>`;
 }
 function renderClaimSupportItem(edge){
   const src=RN[edge.a];
-  let h=`<div class="supitem"><div class="suphead"><span class="badge ${esc(edge.level)}">${esc(edge.level)}</span> from <b class="lnknode" data-node="${esc(edge.a)}">${esc(src?src.label:edge.a)}</b></div>`;
+  let h=`<div class="supitem"><div class="suphead"><span class="badge ${esc(edge.level)}">${esc(edge.level)}</span> ${ui("from")} <b class="lnknode" data-node="${esc(edge.a)}">${esc(src?src.label:edge.a)}</b></div>`;
   if(edge.ref.rationale)h+=`<div class="rationale">${esc(edge.ref.rationale)}</div>`;
   h+=renderDeclaredMeasurements(edge);
   h+=evBlock(edge.ref.evidence_ids,edge.level!=="explicit");
@@ -1239,7 +1466,7 @@ function evBlock(ids,recon){ ids=ids||[]; if(!ids.length)return "";
   }).join("");
 }
 function kindPill(kind,label){ const k=KIND[kind]||KIND.result;
-  return `<span class="kindpill" style="color:${k.c}"><span class="d"></span>${esc(label||k.label)}</span>`; }
+  return `<span class="kindpill" style="color:${k.c}"><span class="d"></span>${esc(label||kindLabel(kind))}</span>`; }
 
 /* ---------- folded provenance trees ----------
    These trees are a reader projection over declared route fields. A tree entry
@@ -1285,7 +1512,7 @@ function routePathEdge(route,upstream,downstream){
   return null;
 }
 function routeLabel(route,index){
-  return (route&&route.subject_variant&&route.subject_variant.label)||`Route ${index+1}`;
+  return (route&&route.subject_variant&&route.subject_variant.label)||`${ui("route")} ${index+1}`;
 }
 function buildFoldedProvenanceTree(rootId,routeList){
   const rawRoot=RN[rootId],root=newProvTreeNode(rootId,false,rawRoot?rawRoot.label:rootId,rawRoot?rawRoot.kind:"");
@@ -1296,7 +1523,7 @@ function buildFoldedProvenanceTree(rootId,routeList){
     if(path[0]!==rootId){
       // A malformed or partial route must remain visibly unlinked rather than
       // implying an edge from the selected result to an unrelated path.
-      parent=ensureProvSection(root,"Declared path (terminal not in path)","unlinked-route");
+      parent=ensureProvSection(root,structuralLabel("unlinked-route","Declared path (terminal not in path)"),"unlinked-route");
     }
     path.forEach((nodeId,pathIndex)=>{
       if(pathIndex===0&&nodeId===rootId)return;
@@ -1318,11 +1545,11 @@ function buildFoldedProvenanceTree(rootId,routeList){
     const inputs=route.additional_input_ids||[];
     const gapsForRoute=route.gap_ids||[];
     const declared=[
-      ["Declared configuration","configuration",configs],
-      ["Declared procedures","procedure",procedures],
-      ["Declared outputs","artifact",outputs],
-      ["Additional inputs","additional-input",inputs],
-      ["Declared gaps","gap",gapsForRoute]
+      [structuralLabel("configuration","Declared configuration"),"configuration",configs],
+      [structuralLabel("procedure","Declared procedures"),"procedure",procedures],
+      [structuralLabel("artifact","Declared outputs"),"artifact",outputs],
+      [structuralLabel("additional-input","Additional inputs"),"additional-input",inputs],
+      [structuralLabel("gap","Declared gaps"),"gap",gapsForRoute]
     ];
     declared.forEach(([label,category,ids])=>{
       ids.filter(id=>RN[id]&&!findProvNode(root,id)).forEach(id=>{
@@ -1338,7 +1565,7 @@ function buildClaimEvidenceTree(claimId,supportEdges,openGaps){
   const byLocator=new Map();
   (supportEdges||[]).forEach(edge=>{
     const result=RN[edge.a];if(!result)return;
-    const locator=(result.ref&&result.ref.paper_locator)||"Unassigned location";
+    const locator=(result.ref&&result.ref.paper_locator)||ui("unassignedLocation");
     if(!byLocator.has(locator))byLocator.set(locator,[]);byLocator.get(locator).push({edge,result});
   });
   byLocator.forEach((items,locator)=>{
@@ -1351,9 +1578,9 @@ function buildClaimEvidenceTree(claimId,supportEdges,openGaps){
     });
   });
   if((openGaps||[]).length){
-    const gapGroup=newProvTreeNode(null,true,"Open gaps","gap-group");gapGroup.category="open-gaps";
+    const gapGroup=newProvTreeNode(null,true,structuralLabel("gap-group","Open gaps"),"gap-group");gapGroup.category="open-gaps";
     (openGaps||[]).forEach(gap=>{
-      const child=newProvTreeNode(gap.id,false,gap.question||gap.missing_content||"Missing evidence","gap");
+      const child=newProvTreeNode(gap.id,false,gapQuestion(gap),"gap");
       child.gap=true;gapGroup.children.push(child);
     });
     root.children.push(gapGroup);
@@ -1366,9 +1593,9 @@ function renderRouteIndex(routeList){
     if(!route||seen.has(route.id))return false;seen.add(route.id);return true;
   });
   if(!unique.length)return "";
-  return `<div class="prov-route-index"><div class="prov-route-heading">Declared routes <span class="n">${unique.length}</span></div>`+
+  return `<div class="prov-route-index"><div class="prov-route-heading">${ui("declaredRoutes")} <span class="n">${unique.length}</span></div>`+
     unique.map((route,index)=>`<button type="button" class="prov-route-branch${activeRoute&&activeRoute.id===route.id?" active":""}" data-route-branch="${esc(route.id||"")}">
-      <span class="prov-route-mark">↳</span><span>${esc(routeLabel(route,index))}</span><span class="prov-route-meta">${esc((route.path||[]).length)} nodes</span></button>`).join("")+`</div>`;
+      <span class="prov-route-mark">↳</span><span>${esc(routeLabel(route,index))}</span><span class="prov-route-meta">${esc((route.path||[]).length)} ${esc(ui("nodesCount"))}</span></button>`).join("")+`</div>`;
 }
 function renderFoldedTreeNode(tree,options,depth){
   options=options||{};depth=depth||0;
@@ -1379,14 +1606,15 @@ function renderFoldedTreeNode(tree,options,depth){
   const node=tree.nodeId?RN[tree.nodeId]:null;
   const label=tree.structural?tree.label:(node?node.label:tree.label);
   const kind=tree.structural?(tree.kind||"group"):(node?node.kind:tree.kind);
+  const kindText=tree.structural?structuralLabel(tree.category,kindLabel(kind)):kindLabel(kind);
   const routeCount=(tree.routeIds||[]).length;
   const badge=tree.assertionLevel?`<span class="prov-node-count">${esc(tree.assertionLevel)}</span>`:
-    (routeCount>1?`<span class="prov-node-count">${routeCount} routes</span>`:"");
-  const toggle=hasChildren?`<button type="button" class="prov-toggle" data-tree-toggle="${domId}" aria-expanded="${open?"true":"false"}" aria-label="${open?"Collapse":"Expand"}">${open?"−":"+"}</button>`:`<span class="prov-toggle-spacer"></span>`;
+    (routeCount>1?`<span class="prov-node-count">${routeCount} ${esc(ui("routes"))}</span>`:"");
+  const toggle=hasChildren?`<button type="button" class="prov-toggle" data-tree-toggle="${domId}" aria-expanded="${open?"true":"false"}" aria-label="${open?ui("collapse"):ui("expand")}">${open?"−":"+"}</button>`:`<span class="prov-toggle-spacer"></span>`;
   const labelHtml=tree.nodeId?`<button type="button" class="prov-node-label" data-node="${esc(tree.nodeId)}">${esc(label)}</button>`:`<span class="prov-structural-label">${esc(label)}</span>`;
   const childHtml=hasChildren?`<div class="prov-children${open?" open":""}" id="${domId}">${children.map(child=>renderFoldedTreeNode(child,options,depth+1)).join("")}</div>`:"";
   return `<div class="prov-entry ${tree.structural?"prov-structural":"prov-real"}${active?" route-active":""}" data-prov-kind="${esc(kind)}">
-    <div class="prov-row">${toggle}${labelHtml}<span class="prov-node-kind">${esc(kind)}</span>${badge}</div>${childHtml}</div>`;
+    <div class="prov-row">${toggle}${labelHtml}<span class="prov-node-kind">${esc(kindText)}</span>${badge}</div>${childHtml}</div>`;
 }
 function renderFoldedProvenanceTree(rootId,routeList,options){
   const tree=buildFoldedProvenanceTree(rootId,routeList);
@@ -1408,40 +1636,41 @@ function renderClaimBrowser(){
   const openGaps=gaps.filter(gp=>gp.category==="unsupported_claim"&&(gp.affects||[]).includes(activeClaimId));
   // paper_locator still determines the supporting-result grouping; each
   // result keeps its declared Assertion level inside the folded tree.
-  head.innerHTML=kindPill("claim","Claim browser")+
-    `<div class="ititle">${esc((guide&&guide.short_label)||nd.label||activeClaimId)}</div>`+
-    `<div class="iloc">${supports.length} supporting result${supports.length===1?"":"s"} · ${openGaps.length} open gap${openGaps.length===1?"":"s"}</div>`;
+  head.innerHTML=kindPill("claim",ui("claimBrowser"))+
+    `<div class="ititle">${esc(localized("nodes",activeClaimId,"label",(guide&&guide.short_label)||nd.label||activeClaimId))}</div>`+
+    `<div class="iloc">${countText(supports.length,"supportingResult","supportingResults")} · ${countText(openGaps.length,"openGap","openGaps")}</div>`;
   let h="";
-  if(guide&&guide.takeaway)h+=`<section class="sec"><div class="sh">Takeaway</div><div class="reading-takeaway">${esc(guide.takeaway.text||"")}</div>${evBlock(guide.takeaway.evidence_ids)}</section>`;
+  if(guide&&guide.takeaway)h+=`<section class="sec"><div class="sh">${ui("takeaway")}</div><div class="reading-takeaway">${esc(guide.takeaway.text||"")}</div>${evBlock(guide.takeaway.evidence_ids)}</section>`;
   const featured=(guide&&guide.featured_result_ids||[]).filter(id=>RN[id]);
-  if(featured.length)h+=`<section class="sec"><div class="sh">Key evidence</div><div class="pill-row">`+
+  if(featured.length)h+=`<section class="sec"><div class="sh">${ui("keyEvidence")}</div><div class="pill-row">`+
     featured.map(id=>`<button class="p" data-node="${esc(id)}">${esc(RN[id].label||id)}</button>`).join("")+`</div></section>`;
   if(supports.length||openGaps.length){
-    h+=`<section class="sec"><div class="sh">Evidence routes · Supporting results <span class="n">${supports.length} supporting result${supports.length===1?"":"s"} · ${openGaps.length} gap${openGaps.length===1?"":"s"}</span></div>`+
-      `<div class="prov-caption">Claim → supporting results → declared provenance</div>`+
+    h+=`<section class="sec"><div class="sh">${ui("evidenceRoutes")} · ${ui("supportingResults")} <span class="n">${countText(supports.length,"supportingResult","supportingResults")} · ${countText(openGaps.length,"openGap","openGaps")}</span></div>`+
+      `<div class="prov-caption">${ui("evidenceRoutesCaption")}</div>`+
       renderClaimProvenanceTree(activeClaimId,supports,openGaps)+`</section>`;
   }
   const sal=nd.salience_evidence_ids||[];
-  if(sal.length)h+=`<section class="sec"><div class="sh">Stated in <span class="n">${sal.length}</span></div>${evBlock(sal)}</section>`;
-  if(supports.length)h+=`<section class="sec"><div class="sh">Measured support <span class="n">${supports.length}</span></div>`+
+  if(sal.length)h+=`<section class="sec"><div class="sh">${ui("statedIn")} <span class="n">${sal.length}</span></div>${evBlock(sal)}</section>`;
+  if(supports.length)h+=`<section class="sec"><div class="sh">${ui("measuredSupport")} <span class="n">${supports.length}</span></div>`+
     supports.map(renderClaimSupportItem).join("")+`</section>`;
-  if(openGaps.length)h+=`<section class="sec"><div class="sh gap-heading">Open gaps <span class="n">${openGaps.length}</span></div>`+
-    openGaps.map(gp=>`<button class="claim-gap" data-node="${esc(gp.id)}"><span>?</span><span>${esc(gp.question||gp.missing_content||"Missing evidence")}</span></button>`).join("")+`</section>`;
+  if(openGaps.length)h+=`<section class="sec"><div class="sh gap-heading">${ui("openQuestions")} <span class="n">${openGaps.length}</span></div>`+
+    openGaps.map(gp=>`<button class="claim-gap" data-node="${esc(gp.id)}"><span>?</span><span>${esc(gapQuestion(gp))}</span></button>`).join("")+`</section>`;
   body.innerHTML=h;wireInspector(body);
 }
 
 function renderClaimInspector(n,nd,head,body){
   const isHead = headlineClaims.has(n.id);
-  const grpTitles = (claimGroups[n.id]||[]).map(gid=>groupById[gid]&&groupById[gid].title).filter(Boolean);
+  const grpTitles = (claimGroups[n.id]||[]).map(gid=>groupById[gid]&&groupTitle(groupById[gid])).filter(Boolean);
   const guide=hasNativeReadingMap()?nativeReadingMap.guideByClaimId[n.id]:null;
-  head.innerHTML = kindPill("claim", "Claim"+(nd.claim_form?" · "+nd.claim_form:"")) +
-    (isHead ? `<div class="hlbadge">★ Headline claim${grpTitles.length?` · ${esc(grpTitles[0])}`:""}</div>`
-            : `<div class="subbadge">non-headline claim</div>`) +
-    `<div class="ititle">${esc((guide&&guide.short_label)||nd.label||n.id)}</div>` +
+  const claimLabel=localized("nodes",n.id,"label",(guide&&guide.short_label)||nd.label||n.id);
+  head.innerHTML = kindPill("claim", ui("claim")+(nd.claim_form?" · "+nd.claim_form:"")) +
+    (isHead ? `<div class="hlbadge">★ ${ui("headlineClaim")}${grpTitles.length?` · ${esc(grpTitles[0])}`:""}</div>`
+            : `<div class="subbadge">${ui("nonHeadlineClaim")}</div>`) +
+    `<div class="ititle">${esc(claimLabel)}</div>` +
     (guide&&guide.short_label&&guide.short_label!==nd.label?`<div class="iloc">${esc(nd.label||n.id)}</div>`:"");
   let h="";
   if(guide&&guide.takeaway){
-    h+=`<div class="sec"><div class="sh">Reading takeaway</div><div class="reading-takeaway">${esc(guide.takeaway.text||"")}</div>${evBlock(guide.takeaway.evidence_ids)}</div>`;
+    h+=`<div class="sec"><div class="sh">${ui("readingTakeaway")}</div><div class="reading-takeaway">${esc(guide.takeaway.text||"")}</div>${evBlock(guide.takeaway.evidence_ids)}</div>`;
   }
   if(guide){
     const featuredResults=(guide.featured_result_ids||[]).filter(id=>RN[id]);
@@ -1453,10 +1682,10 @@ function renderClaimInspector(n,nd,head,body){
       return null;
     }).filter(Boolean);
     if(featuredResults.length||featuredMeasurements.length){
-      h+=`<div class="sec"><div class="sh">Featured evidence</div><div class="pill-row">`+
+      h+=`<div class="sec"><div class="sh">${ui("featuredEvidence")}</div><div class="pill-row">`+
         featuredResults.map(id=>`<span class="p" data-node="${esc(id)}">${esc(RN[id].label||id)}</span>`).join("")+`</div>`;
       if(featuredMeasurements.length)h+=`<table class="meas featured-measurements"><tbody>`+
-        featuredMeasurements.map(item=>`<tr><td>${esc(item.measurement.metric)}</td><td class="val">${renderMeasurementValue(item.measurement)}${item.measurement.unit?` <span class="u">${esc(item.measurement.unit)}</span>`:""}</td></tr>`).join("")+`</tbody></table>`;
+        featuredMeasurements.map(item=>`<tr><td>${esc(measurementLabel(item.measurement))}</td><td class="val">${renderMeasurementValue(item.measurement)}${item.measurement.unit?` <span class="u">${esc(item.measurement.unit)}</span>`:""}</td></tr>`).join("")+`</tbody></table>`;
       h+=`</div>`;
     }
   }
@@ -1466,25 +1695,25 @@ function renderClaimInspector(n,nd,head,body){
   // Separate the paper's qualitative statement from measurements that may
   // quantify only one facet of a broader Claim.
   const sal = nd.salience_evidence_ids||[];
-  if(sal.length) h+=`<div class="sec"><div class="sh">Stated in (paper) <span class="n">${sal.length}</span></div>${evBlock(sal)}</div>`;
+  if(sal.length) h+=`<div class="sec"><div class="sh">${ui("statedInPaper")} <span class="n">${sal.length}</span></div>${evBlock(sal)}</div>`;
   // Support: incoming supports-edges (result → claim), including the exact
   // measurement and comparison references declared by each edge.
   if(sup.length){
-    h+=`<div class="sec"><div class="sh">Measured support <span class="n">${sup.length}</span></div>`+
+    h+=`<div class="sec"><div class="sh">${ui("measuredSupport")} <span class="n">${sup.length}</span></div>`+
       sup.map(renderClaimSupportItem).join("")+`</div>`;
   }
   if(clmGaps.length){
     clmGaps.forEach(gp=>{
-      h+=`<div class="sec"><div class="sh" style="color:var(--k-gap)">Unsupported in paper</div>
-        <div class="gapcard"><div class="lbl">no reported result backs this claim</div>
-        <div class="q">${esc(gp.question||gp.missing_content||"")}</div>
-        <div class="pill-row"><span class="p" data-node="${esc(gp.id)}">open gap ▸</span></div></div></div>`;
+      h+=`<div class="sec"><div class="sh" style="color:var(--k-gap)">${ui("unsupportedInPaper")}</div>
+        <div class="gapcard"><div class="lbl">${ui("noSupportingResult")}</div>
+        <div class="q">${esc(gapQuestion(gp))}</div>
+        <div class="pill-row"><span class="p" data-node="${esc(gp.id)}">${ui("openGapAction")}</span></div></div></div>`;
     });
   }
-  else if(!sal.length && !sup.length && !clmGaps.length) h+=`<div class="sec"><div style="color:var(--ink-faint);font-size:12px">No source evidence recorded for this claim.</div></div>`;
+  else if(!sal.length && !sup.length && !clmGaps.length) h+=`<div class="sec"><div style="color:var(--ink-faint);font-size:12px">${ui("noSourceEvidence")}</div></div>`;
   // Connections
   const nb=[...(inspectorAdjacency()[n.id]||[])].filter(id=>RN[id]);
-  if(nb.length){ h+=`<div class="sec"><div class="sh">Connections <span class="n">${nb.length}</span></div><div class="pill-row">`+
+  if(nb.length){ h+=`<div class="sec"><div class="sh">${ui("connections")} <span class="n">${nb.length}</span></div><div class="pill-row">`+
     nb.slice(0,24).map(id=>`<span class="p" data-node="${esc(id)}">${esc((RN[id].label||id).slice(0,28))}</span>`).join("")+`</div></div>`; }
   body.innerHTML=h; wireInspector(body);
 }
@@ -1512,41 +1741,42 @@ function renderDetailInspector(){
   // while every declared route remains selectable for route-only highlighting.
   const rts=routesByResult[n.id];
   if(rts && rts.length){
-    h+=`<div class="sec"><div class="sh">Evidence routes <span class="n">${rts.length}</span></div>`+
-      `<div class="prov-caption">Result → declared upstream paths and branches</div>`+
+    h+=`<div class="sec"><div class="sh">${ui("evidenceRoutes")} <span class="n">${rts.length}</span></div>`+
+      `<div class="prov-caption">${ui("resultRouteCaption")}</div>`+
       renderFoldedProvenanceTree(n.id,rts,{root:false})+`</div>`;
   }
   // measurements
   const ms=measOf(n);
   if(ms.length){
-    h+=`<div class="sec"><div class="sh">Measurements <span class="n">${ms.length}</span></div>
-      <table class="meas"><thead><tr><th>Metric</th><th>Value</th><th></th></tr></thead><tbody>`;
-    ms.forEach(m=>{ h+=`<tr><td>${esc(m.metric)}${m.qualifier?`<div style="color:var(--ink-faint);font-size:10.5px;margin-top:2px">${esc(m.qualifier)}</div>`:""}</td>
+    h+=`<div class="sec"><div class="sh">${ui("measurements")} <span class="n">${ms.length}</span></div>
+      <table class="meas"><thead><tr><th>${ui("metric")}</th><th>${ui("value")}</th><th></th></tr></thead><tbody>`;
+    ms.forEach(m=>{ const qualifier=measurementField(m,"qualifier",m.qualifier); h+=`<tr><td>${esc(measurementLabel(m))}${qualifier?`<div style="color:var(--ink-faint);font-size:10.5px;margin-top:2px">${esc(qualifier)}</div>`:""}</td>
       <td class="val">${renderMeasurementValue(m)}${m.unit?` <span class="u">${esc(m.unit)}</span>`:""}${m.uncertainty?` <span class="u">±${esc(m.uncertainty)}</span>`:""}</td>
       <td><span class="avail ${esc(m.availability)}">${esc(m.availability)}</span></td></tr>`; });
     h+=`</tbody></table></div>`;
   }
   // evidence
   const ev=evBlock(nd.evidence_ids);
-  if(ev) h+=`<div class="sec"><div class="sh">Evidence <span class="n">${(nd.evidence_ids||[]).length}</span></div>${ev}</div>`;
+  if(ev) h+=`<div class="sec"><div class="sh">${ui("evidence")} <span class="n">${(nd.evidence_ids||[]).length}</span></div>${ev}</div>`;
   // neighbors
   const nb=[...(inspectorAdjacency()[n.id]||[])].filter(id=>RN[id]);
-  if(nb.length){ h+=`<div class="sec"><div class="sh">Connections <span class="n">${nb.length}</span></div><div class="pill-row">`+
+  if(nb.length){ h+=`<div class="sec"><div class="sh">${ui("connections")} <span class="n">${nb.length}</span></div><div class="pill-row">`+
     nb.slice(0,24).map(id=>`<span class="p" data-node="${esc(id)}">${esc((RN[id].label||id).slice(0,28))}</span>`).join("")+`</div></div>`; }
   body.innerHTML=h; wireInspector(body);
 }
 
 function renderGapInspector(n){
   const g=n.ref; const head=document.getElementById("pg-detail-head"), body=document.getElementById("pg-detail-body");
-  head.innerHTML = kindPill("gap","Evidence gap") +
-    `<div class="ititle">${esc(g.category||"missing evidence")}</div>` +
+  head.innerHTML = kindPill("gap",ui("evidenceGap")) +
+    `<div class="ititle">${esc(categoryLabel(g.category))}</div>` +
     `<div class="iloc">${esc((g.between||[]).map(id=>RN[id]?RN[id].label:id).join("  ⟶  "))}</div>`;
-  let h=`<div class="sec"><div class="gapcard"><div class="lbl">Open question</div>
-    <div class="q">${esc(g.question||g.missing_content||"")}</div>`;
-  if(g.missing_content && g.question) h+=`<div style="margin-top:10px;font-size:12px;color:var(--ink-dim)">${esc(g.missing_content)}</div>`;
-  if(g.expected_kind) h+=`<div class="searched"><b>expected:</b> ${esc(g.expected_kind)}</div>`;
+  let h=`<div class="sec"><div class="gapcard"><div class="lbl">${ui("openQuestion")}</div>
+    <div class="q">${esc(gapQuestion(g))}</div>`;
+  const missingContent=gapText(g,"missing_content",g.missing_content||"");
+  if(missingContent && missingContent!==gapQuestion(g)) h+=`<div style="margin-top:10px;font-size:12px;color:var(--ink-dim)">${esc(missingContent)}</div>`;
+  if(g.expected_kind) h+=`<div class="searched"><b>${ui("expected")}:</b> ${esc(g.expected_kind)}</div>`;
   if(g.searched_locations&&g.searched_locations.length)
-    h+=`<div class="searched"><b>searched:</b> ${esc(g.searched_locations.join(" · "))}</div>`;
+    h+=`<div class="searched"><b>${ui("searched")}:</b> ${esc(g.searched_locations.join(" · "))}</div>`;
   h+=`</div></div>`;
   if(g.affects&&g.affects.length){
     // `affects` entries are a mix of node ids and provenance-route ids (see
@@ -1555,7 +1785,7 @@ function renderGapInspector(n){
     const nodeAffects=g.affects.filter(a=>RN[a]);
     const routeAffects=g.affects.filter(a=>routesById[a]);
     const unknown=g.affects.filter(a=>!RN[a]&&!routesById[a]);
-    h+=`<div class="sec"><div class="sh">Affects <span class="n">${g.affects.length}</span></div>`;
+    h+=`<div class="sec"><div class="sh">${ui("affects")} <span class="n">${g.affects.length}</span></div>`;
     if(nodeAffects.length){
       h+=`<div style="font-size:11px;color:var(--ink-faint);margin-bottom:4px">${nodeAffects.length} node${nodeAffects.length>1?"s":""}</div>
         <div class="pill-row">`+nodeAffects.map(id=>`<span class="p" data-node="${esc(id)}">${esc(RN[id].label||id)}</span>`).join("")+`</div>`;
@@ -1575,10 +1805,10 @@ function renderSummaryEdgeInspector(e){
   openDetailInspector();
   const head=document.getElementById("pg-detail-head"),body=document.getElementById("pg-detail-body");
   const p=RN[e.a],q=RN[e.b],constituents=e.constituentEdges||[];
-  head.innerHTML=`<span class="kindpill" style="color:${pal().pillRecon}"><span class="d"></span>Bundled ${esc(e.rel)}</span>
+  head.innerHTML=`<span class="kindpill" style="color:${pal().pillRecon}"><span class="d"></span>${esc(ui("resultGroup"))}: ${esc(e.rel)}</span>
     <div class="ititle">${esc(p.label)} <span style="color:var(--ink-faint)">→</span> ${esc(q.label)}</div>
-    <div class="iloc">${constituents.length} exact relationship${constituents.length===1?"":"s"}</div>`;
-  body.innerHTML=`<div class="sec"><div class="sh">Constituent relationships <span class="n">${constituents.length}</span></div>
+    <div class="iloc">${constituents.length} ${ui(constituents.length===1?"relationship":"relationships")}</div>`;
+  body.innerHTML=`<div class="sec"><div class="sh">${ui("constituentRelationships")} <span class="n">${constituents.length}</span></div>
     <div class="pill-row">${constituents.map(item=>{
       const a=RN[item.a],b=RN[item.b];
       return `<span class="p" data-edge="${esc(item.id)}">${esc(a?a.label:item.a)} → ${esc(b?b.label:item.b)} · ${esc(item.level)}</span>`;
@@ -1589,15 +1819,15 @@ function renderInspectorEdge(e){
   openDetailInspector();
   const head=document.getElementById("pg-detail-head"), body=document.getElementById("pg-detail-body");
   const p=RN[e.a],q=RN[e.b];
-  head.innerHTML = `<span class="kindpill" style="color:${e.level==="explicit"?pal().pillExplicit:pal().pillRecon}"><span class="d"></span>${esc(e.rel)} · ${esc(e.level)}</span>
+  head.innerHTML = `<span class="kindpill" style="color:${e.level==="explicit"?pal().pillExplicit:pal().pillRecon}"><span class="d"></span>${esc(e.rel)} · ${esc(ui(e.level)||e.level)}</span>
     <div class="ititle">${esc(p.label)} <span style="color:var(--ink-faint)">→</span> ${esc(q.label)}</div>`;
   let h="";
-  if(e.ref.rationale) h+=`<div class="sec"><div class="sh">Why this link</div><div class="rationale">${esc(e.ref.rationale)}</div></div>`;
+  if(e.ref.rationale) h+=`<div class="sec"><div class="sh">${ui("whyThisLink")}</div><div class="rationale">${esc(e.ref.rationale)}</div></div>`;
   const declaredMeasurements=renderDeclaredMeasurements(e);
-  if(declaredMeasurements)h+=`<div class="sec"><div class="sh">Declared evidence</div>${declaredMeasurements}</div>`;
+  if(declaredMeasurements)h+=`<div class="sec"><div class="sh">${ui("declaredMeasurements")}</div>${declaredMeasurements}</div>`;
   const ev=evBlock(e.ref.evidence_ids, e.level!=="explicit");
-  if(ev) h+=`<div class="sec"><div class="sh">Evidence <span class="n">${(e.ref.evidence_ids||[]).length}</span></div>${ev}</div>`;
-  if(e.level!=="explicit") h+=`<div class="sec"><div style="font-size:11.5px;color:var(--ink-faint);line-height:1.5">Reconstructed — inferred from the paper's structure, not stated verbatim.</div></div>`;
+  if(ev) h+=`<div class="sec"><div class="sh">${ui("evidence")} <span class="n">${(e.ref.evidence_ids||[]).length}</span></div>${ev}</div>`;
+  if(e.level!=="explicit") h+=`<div class="sec"><div style="font-size:11.5px;color:var(--ink-faint);line-height:1.5">${ui("reconstructedNote")}</div></div>`;
   body.innerHTML=h; wireInspector(body);
 }
 function wireInspector(body){
@@ -1632,12 +1862,12 @@ function wireInspector(body){
 function renderCrumb(){
   const c=document.getElementById("pg-crumb");
   if(activeRoute){ const res=nodeById[activeRoute.result_id];
-    c.style.display="flex"; c.innerHTML=`<span class="lvl">route</span><span>${esc(res?res.label:activeRoute.result_id)}</span><span class="x">✕</span>`;
+    c.style.display="flex"; c.innerHTML=`<span class="lvl">${esc(ui("route"))}</span><span>${esc(res?nodeLabel(res):activeRoute.result_id)}</span><span class="x">✕</span>`;
     c.querySelector(".x").onclick=clearSel; return; }
   if(activeClaimId){ const n=nodeById[activeClaimId];
-    c.style.display="flex"; c.innerHTML=`<span class="lvl">claim</span><span>${esc(n?n.label:activeClaimId)}</span><span class="x">✕</span>`;
+    c.style.display="flex"; c.innerHTML=`<span class="lvl">${esc(ui("claim"))}</span><span>${esc(n?nodeLabel(n):activeClaimId)}</span><span class="x">✕</span>`;
     c.querySelector(".x").onclick=clearSel; return; }
-  if(selNode){ c.style.display="flex"; c.innerHTML=`<span class="lvl">${esc(selNode.gap?"gap":selNode.kind)}</span><span>${esc(selNode.label)}</span><span class="x">✕</span>`;
+  if(selNode){ c.style.display="flex"; c.innerHTML=`<span class="lvl">${esc(selNode.gap?ui("nodeKindGap"):kindLabel(selNode.kind))}</span><span>${esc(selNode.label)}</span><span class="x">✕</span>`;
     c.querySelector(".x").onclick=clearSel; return; }
   c.style.display="none";
 }
@@ -1651,7 +1881,7 @@ function buildLegend(){
     const m=KIND[k]; const gap=k==="gap";
     return `<div class="leg${gap?" gaprow":""}" data-kind="${k}">
       <span class="dot" style="${gap?"":`background:${m.c};color:${m.c}`}"></span>
-      <span class="nm">${m.label}</span><span class="ct">${cnt[k]}</span></div>`;
+      <span class="nm">${kindLabel(k)}</span><span class="ct">${cnt[k]}</span></div>`;
   }).join("");
   el.querySelectorAll(".leg").forEach(row=>row.addEventListener("click",()=>{
     const k=row.getAttribute("data-kind");
@@ -1688,9 +1918,9 @@ function buildReadingOutline(){
     const guide=hasNativeReadingMap()?nativeReadingMap.guideByClaimId[cid]:null;
     return `<button type="button" class="outline-claim" data-claim="${esc(cid)}">
       <span class="outline-index">${String(i+1).padStart(2,"0")}</span>
-      <span class="claim-label">${esc((guide&&guide.short_label)||RN[cid].label)}</span>
-      <span class="claim-support">${incoming.length?`<span>${incoming.length} supporting result${incoming.length===1?"":"s"}</span>`:"<span>no supporting result</span>"}
-        ${openGaps.length?`<span class="unsupported">${openGaps.length} open gap${openGaps.length===1?"":"s"}</span>`:""}</span>
+      <span class="claim-label">${esc(localized("nodes",cid,"label",(guide&&guide.short_label)||RN[cid].label))}</span>
+      <span class="claim-support">${incoming.length?`<span>${countText(incoming.length,"supportingResult","supportingResults")}</span>`:`<span>${ui("noSupportingResult")}</span>`}
+        ${openGaps.length?`<span class="unsupported">${countText(openGaps.length,"openGap","openGaps")}</span>`:""}</span>
     </button>`;
   }).join("");
   el.querySelectorAll("[data-claim]").forEach(btn=>btn.addEventListener("click",()=>{
@@ -1702,7 +1932,7 @@ function buildStructuralIntroductions(){
   el.innerHTML=groups.map(group=>{
     const members=(group.member_node_ids||[]).map(id=>RN[id]).filter(n=>n&&n.kind!=="result"&&n.kind!=="claim");
     if(!members.length)return "";
-    return `<section class="structural-group"><div class="structural-title">${esc(group.title||group.id)}</div>
+    return `<section class="structural-group"><div class="structural-title">${esc(groupTitle(group))}</div>
       <div class="pill-row">${members.map(n=>`<button class="p" data-node="${esc(n.id)}">${esc(n.label)}</button>`).join("")}</div></section>`;
   }).join("");
   el.querySelectorAll("[data-node]").forEach(btn=>btn.addEventListener("click",()=>{
@@ -1711,22 +1941,33 @@ function buildStructuralIntroductions(){
 }
 function buildReadingSummary(){
   const takeaway=hasNativeReadingMap()&&nativeReadingMap.map.paper_takeaway;
-  document.getElementById("pg-paper-summary").textContent=(takeaway&&takeaway.text)||(G.paper&&G.paper.title)||"Untitled paper";
+  document.getElementById("pg-paper-summary").textContent=localizedPaper("summary",(takeaway&&takeaway.text)||(G.paper&&G.paper.title)||"Untitled paper");
   const basis=document.getElementById("pg-reading-basis");
   if(basis)basis.style.display="none";
   const headlineCount=headlineClaims.size;
   const resultCount=rawNodes.filter(n=>n.kind==="result").length;
   document.getElementById("pg-reading-stats").innerHTML=
-    `<span class="summary-stat"><b>${headlineCount}</b> core claims</span>
-     <span class="summary-stat"><b>${resultCount}</b> results</span>
-     <span class="summary-stat gaps"><b>${gaps.length}</b> gaps</span>`;
+    `<span class="summary-stat"><b>${headlineCount}</b> ${ui("coreClaims")}</span>
+     <span class="summary-stat"><b>${resultCount}</b> ${ui("results")}</span>
+     <span class="summary-stat gaps"><b>${gaps.length}</b> ${ui("gaps")}</span>`;
   const questionCount=document.getElementById("pg-open-questions-count");
-  if(questionCount)questionCount.textContent=gaps.length?`${gaps.length}`:"";
+  const coreGaps=gaps.filter(gp=>gapTierById[gp.id]==="core");
+  const detailGaps=gaps.filter(gp=>gapTierById[gp.id]==="detail");
+  if(questionCount)questionCount.textContent=gaps.length?`${coreGaps.length}${detailGaps.length?` + ${detailGaps.length}`:""}`:"";
   const q=document.getElementById("pg-open-questions");
-  q.innerHTML=gaps.length?gaps.map((gp,i)=>`<button type="button" class="open-question" data-gap="${esc(gp.id)}">
-    <span class="qmark">?</span><span class="qtext">${esc(gp.question||gp.missing_content||"Missing evidence")}</span>
-    <span class="qcat">${esc(gp.category||"gap")}</span></button>`).join(""):
-    `<div class="open-question-empty">No recorded evidence gaps.</div>`;
+  function gapButton(gp){
+    return `<button type="button" class="open-question ${gapTierById[gp.id]==="detail"?"detail-question":"core-question"}" data-gap="${esc(gp.id)}">
+      <span class="qmark">?</span><span class="qtext">${esc(gapText(gp,"question",gp.missing_content||ui("missingEvidence")))}</span>
+      <span class="qcat">${esc(categoryLabel(gp.category))}</span></button>`;
+  }
+  q.innerHTML=gaps.length?
+    `<div class="gap-tier-label core-gap-label">${ui("coreGaps")} <span>${coreGaps.length}</span></div>
+      ${coreGaps.map(gapButton).join("")}
+      ${detailGaps.length?`<details class="gap-tier-details" id="pg-detail-gaps">
+        <summary>${ui("detailGaps")} <span class="section-count">${detailGaps.length}</span></summary>
+        <div class="detail-gap-list">${detailGaps.map(gapButton).join("")}</div>
+      </details>`:""}`:
+    `<div class="open-question-empty">${ui("noRecordedGaps")}</div>`;
   q.querySelectorAll("[data-gap]").forEach(btn=>btn.addEventListener("click",()=>{
     const n=RN[btn.getAttribute("data-gap")];if(n)selectNode(n);
   }));
@@ -1738,9 +1979,9 @@ function syncOutlineUI(){
 function buildStats(){
   const el=document.getElementById("pg-stats");
   const nc=rawNodes.length, ec=(G.edges||[]).length, rc=routes.length, gc=gaps.length;
-  el.innerHTML=[["nodes",nc],["edges",ec],["routes",rc]].map(([l,v])=>
+  el.innerHTML=[[ui("nodes"),nc],[ui("edges"),ec],[ui("routes"),rc]].map(([l,v])=>
     `<div class="stat"><div class="v">${v}</div><div class="l">${l}</div></div>`).join("")+
-    `<div class="stat gap"><div class="v">${gc}</div><div class="l">gaps</div></div>`;
+    `<div class="stat gap"><div class="v">${gc}</div><div class="l">${ui("gaps")}</div></div>`;
 }
 
 /* ---------- search ---------- */
@@ -1789,7 +2030,7 @@ function setRailCollapsed(collapsed,preserveCanvas,persist){
   railCollapsed=next;
   const root=document.getElementById("pg-root"),btn=document.getElementById("pg-rail-toggle");
   root.classList.toggle("rail-collapsed",next);
-  btn.title=next?"Expand sidebar":"Collapse sidebar";
+  btn.title=next?ui("expandSidebar"):ui("collapseSidebar");
   btn.setAttribute("aria-label",btn.title);
   btn.setAttribute("aria-expanded",next?"false":"true");
   if(preserveCanvas&&innerWidth>900){
@@ -1975,6 +2216,7 @@ function setViewMode(mode,initial){
   viewMode=mode==="full"?"full":"compact";
   if(viewMode==="compact"){
     manualExpandedResultGroups.clear();claimExpandedResultGroups.clear();
+    revealedDetailGaps.clear();
     if(activeClaimId)expandClaimEvidenceResultGroups(activeClaimId);
   }
   const root=document.getElementById("pg-root");
@@ -2036,6 +2278,9 @@ function fitAll(){fitIds(null);}
 
 /* ---------- boot ---------- */
 document.getElementById("pg-paper").textContent = (G.paper&&G.paper.title)||"";
+applyLocaleStatic();
+document.getElementById("pg-lang-zh").addEventListener("click",()=>setLocale("zh-CN"));
+document.getElementById("pg-lang-en").addEventListener("click",()=>setLocale("en"));
 buildLegend();buildReadingOutline();buildStructuralIntroductions();buildReadingSummary();buildStats();
 initRailControls();
 initDetailResizeControl();

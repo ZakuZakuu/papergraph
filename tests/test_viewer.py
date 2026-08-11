@@ -84,6 +84,8 @@ def test_current_claim_first_viewer_features_are_packaged(built: Path):
         'id="pg-layout-reset"',
         'id="pg-line-guide"',
         'id="pg-line-guide-popover"',
+        'id="pg-lang-zh"',
+        'id="pg-lang-en"',
     ):
         assert marker in index
     for marker in (
@@ -98,6 +100,10 @@ def test_current_claim_first_viewer_features_are_packaged(built: Path):
         "function selectComparisonConnector",
         "function setLineGuideOpen",
         "function requestRender",
+        "function applyLocaleStatic",
+        "function setLocale",
+        "function isDetailGap",
+        "gap-tier-details",
         "function advanceCamera",
         "Comparative evidence",
         "comparison_result_ids",

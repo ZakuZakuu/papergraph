@@ -54,7 +54,7 @@ The resulting viewer is fully static and works without a running server.
 | --- | --- |
 | **Extraction skill** | Guides an Agent through coverage planning, evidence-grounded extraction, self-review, and the final CLI gate. |
 | **PaperGraph CLI** | Validates the JSON contract and assembles a portable viewer. It has zero runtime dependencies and can run from a pinned `.pyz` bundle. |
-| **Static viewer** | Opens the generated graph locally in a browser. It provides Claim-first reading, provenance routes, compact/full Result views, and source-linked inspection. |
+| **Static viewer** | Opens the generated graph locally in a browser. It provides Claim-first reading, provenance routes, compact/full Result views, source-linked inspection, and an optional Chinese display sidecar without translating source quotes. |
 
 The repository mirrors that structure: `skills/` contains the extraction instructions, `src/papergraph/` contains the CLI and bundled viewer, and `tests/` protects the contract and packaging behavior.
 
@@ -79,6 +79,10 @@ With the installed command-line entry point, the equivalent is:
 papergraph validate --graph graph.json --coverage coverage-plan.json --source paper.json
 papergraph build --graph graph.json --coverage coverage-plan.json --source paper.json --out ./viewer-out
 ```
+
+When the extraction includes the standard Chinese display sidecar, add
+`--locales ./locales`. The sidecar changes display labels only; source quotes,
+numbers, units, formulas, and locators remain unchanged.
 
 Open `viewer-out/index.standalone.html` in any modern browser. It is one self-contained HTML file: no server, CDN, font download, or network call is required.
 

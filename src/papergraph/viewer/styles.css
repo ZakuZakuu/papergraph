@@ -37,6 +37,12 @@
   color:var(--ink-faint);font-family:var(--mono);font-size:10.5px;cursor:pointer}
 .view-switch button:hover{color:var(--ink)}
 .view-switch button.active{background:var(--bg2);color:var(--accent);box-shadow:inset 0 0 0 1px var(--stroke2)}
+.language-switch{display:flex;align-items:center;padding:2px;border:1px solid var(--stroke);
+  border-radius:8px;background:var(--panel);pointer-events:auto}
+.language-switch button{height:25px;min-width:27px;padding:0 7px;border:0;border-radius:6px;background:transparent;
+  color:var(--ink-faint);font-family:var(--mono);font-size:10.5px;cursor:pointer}
+.language-switch button:hover{color:var(--ink)}
+.language-switch button.active{background:var(--bg2);color:var(--accent);box-shadow:inset 0 0 0 1px var(--stroke2)}
 #pg-top .icon-btn{pointer-events:auto;display:grid;place-items:center;
   width:30px;height:30px;border-radius:9px;border:1px solid var(--stroke);
   background:var(--panel);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
@@ -128,6 +134,17 @@
 .open-question .qtext{font-size:12px;line-height:1.4}
 .open-question .qcat{grid-column:2;font-family:var(--mono);font-size:9px;color:var(--ink-faint);
   text-transform:uppercase}
+.open-question.detail-question{border-color:rgba(167,101,112,.18);background:rgba(167,101,112,.035)}
+.open-question.detail-question .qmark{color:#b87882}
+.open-question.detail-question:hover{border-color:rgba(208,132,142,.4)}
+.gap-tier-label{display:flex;align-items:center;justify-content:space-between;margin:2px 0 4px;
+  font-family:var(--mono);font-size:9px;letter-spacing:.09em;text-transform:uppercase;color:var(--k-gap)}
+.gap-tier-label span,.gap-tier-details .section-count{font-size:9px;color:var(--ink-faint);border-color:var(--stroke2)}
+.gap-tier-details{margin-top:8px;border-top:1px solid var(--stroke);padding-top:7px}
+.gap-tier-details summary{cursor:pointer;list-style-position:inside;font-family:var(--mono);font-size:9px;
+  letter-spacing:.08em;text-transform:uppercase;color:var(--ink-faint)}
+.gap-tier-details[open] summary{color:var(--ink-dim);margin-bottom:7px}
+.detail-gap-list{display:flex;flex-direction:column;gap:6px}
 .open-question-empty{font-size:11.5px;color:var(--ink-faint)}
 .graph-stats{margin-top:14px;padding-top:14px;border-top:1px solid var(--stroke)}
 .graph-stats h2{margin-bottom:10px}
@@ -431,16 +448,25 @@ table.meas tr:last-child td{border-bottom:none}
   #pg-top .paper{display:none}
   #pg-top .sub{display:none}
   .view-switch{margin-left:auto}
+  #pg-top{gap:7px;padding-left:12px;padding-right:12px}
+  .language-switch button{min-width:25px;padding:0 5px}
 }
 @media (max-width:900px) and (max-height:700px){
   #pg-rail{max-height:min(38vh,320px);max-height:min(38dvh,320px)}
 }
 @media (max-width:600px){
+  #pg-top{gap:5px;padding-left:10px;padding-right:10px}
+  #pg-top #pg-github{display:none}
+  #pg-top h1{font-size:13px}
+  .view-switch button{padding-left:7px;padding-right:7px}
   #pg-rail{left:10px;right:10px;top:calc(56px + env(safe-area-inset-top));max-height:min(42vh,390px);max-height:min(42dvh,390px);
     border-radius:18px;padding-right:2px;padding-bottom:calc(9px + env(safe-area-inset-bottom))}
   #pg-rail>.card{border-radius:10px;padding:12px}
 }
 @media (prefers-reduced-motion:reduce){.detail-panel{transition:none}}
+@media (max-width:900px){
+  :root[data-theme="light"] #pg-rail{background:rgba(255,255,255,.9)}
+}
 
 /* ---------- light theme (data-theme="light", set by the bulb toggle in app.js;
    defaults to the OS preference on first load, then remembers the manual choice) ---------- */
@@ -475,6 +501,8 @@ table.meas tr:last-child td{border-bottom:none}
 :root[data-theme="light"] .avail.absent{background:rgba(211,52,68,.13);color:#b3243b}
 :root[data-theme="light"] .gapcard{background:rgba(211,52,68,.06);border-color:rgba(211,52,68,.28)}
 :root[data-theme="light"] .gapcard .q{color:#9c2436}
+:root[data-theme="light"] .open-question.detail-question{border-color:rgba(168,121,128,.25);background:rgba(168,121,128,.045)}
+:root[data-theme="light"] .open-question.detail-question .qmark{color:#a9626d}
 :root[data-theme="light"] .hlbadge{color:#8a5c1c;border-color:rgba(176,116,32,.5);background:rgba(176,116,32,.10)}
 :root[data-theme="light"] .suphead .badge.explicit{background:rgba(24,128,72,.14);color:#137a41}
 :root[data-theme="light"] .suphead .badge.reconstructed{background:rgba(108,90,196,.14);color:#5b46b8}
